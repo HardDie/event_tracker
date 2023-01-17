@@ -6,6 +6,7 @@ services:
     volumes:
       - '.:/home/app:ro'
       - './db:/db'
+      - './cache:/go'
     environment:
       - DB_PATH=/db/event.db
     working_dir: '/home/app'
