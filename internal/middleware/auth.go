@@ -20,17 +20,17 @@ func NewAuthMiddleware(authService service.IAuth) *AuthMiddleware {
 }
 func (m *AuthMiddleware) RequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie := utils.GetCookie(r)
+		bearer := utils.GetBearer(r)
 
-		// If we got no cookie
-		if cookie == nil || cookie.Value == "" {
+		// If we got no session
+		if bearer == "" {
 			http.Error(w, "Invalid session", http.StatusBadRequest)
 			return
 		}
 
-		// Validate if cookie is active
+		// Validate if session is active
 		ctx := r.Context()
-		session, err := m.authService.ValidateCookie(ctx, cookie.Value)
+		session, err := m.authService.ValidateCookie(ctx, bearer)
 		if err != nil || session == nil {
 			if errors.Is(err, service.ErrorSessionHasExpired) {
 				http.Error(w, "Session has expired", http.StatusUnauthorized)

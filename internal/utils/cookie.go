@@ -5,38 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"time"
-
-	"github.com/HardDie/event_tracker/internal/logger"
+	"strings"
 )
 
-func SetSessionCookie(session string, w http.ResponseWriter) {
-	cookie := http.Cookie{
-		Name:     "session",
-		Path:     "/",
-		Value:    session,
-		HttpOnly: true,
-	}
-	http.SetCookie(w, &cookie)
-}
-func DeleteSessionCookie(w http.ResponseWriter) {
-	cookie := http.Cookie{
-		Name:     "session",
-		Path:     "/",
-		Value:    "",
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-	}
-	http.SetCookie(w, &cookie)
-}
-
-func GetCookie(r *http.Request) *http.Cookie {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		logger.Error.Println("Can't read cookie from request:", err.Error())
-		return nil
-	}
-	return cookie
+func GetBearer(r *http.Request) string {
+	header := r.Header.Get("Authorization")
+	return strings.ReplaceAll(header, "Bearer ", "")
 }
 
 func GenerateSessionKey() (string, error) {

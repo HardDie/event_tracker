@@ -21,7 +21,7 @@
 //	SecurityDefinitions:
 //	token:
 //	     type: apiKey
-//	     name: Cookie
+//	     name: Authorization
 //	     in: header
 //
 // swagger:meta

@@ -93,7 +93,6 @@ func (s *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SetSessionCookie(session.Session, w)
 	err = utils.Response(w, session)
 	if err != nil {
 		logger.Error.Printf(err.Error())
@@ -153,7 +152,6 @@ func (s *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SetSessionCookie(session.Session, w)
 	err = utils.Response(w, session)
 	if err != nil {
 		logger.Error.Printf(err.Error())
@@ -223,5 +221,4 @@ func (s *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	utils.DeleteSessionCookie(w)
 }
