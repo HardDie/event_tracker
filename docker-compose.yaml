@@ -1,0 +1,14 @@
+version: '3.0'
+
+services:
+  app:
+    image: golang:latest
+    volumes:
+      - '.:/home/app:ro'
+      - './db:/db'
+    environment:
+      - DB_PATH=/db/event.db
+    working_dir: '/home/app'
+    ports:
+      - 8080:8080
+    command: sh -c "go run cmd/event_tracker/main.go"
