@@ -50,6 +50,10 @@ type AuthRegisterRequest struct {
 
 // swagger:response AuthRegisterResponse
 type AuthRegisterResponse struct {
+	// In: body
+	Body struct {
+		*entity.Session
+	}
 }
 
 // swagger:route POST /api/v1/auth/register Auth AuthRegisterRequest
@@ -89,7 +93,10 @@ func (s *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SetSessionCookie(session, w)
+	err = utils.Response(w, session)
+	if err != nil {
+		logger.Error.Printf(err.Error())
+	}
 }
 
 // swagger:parameters AuthLoginRequest
@@ -102,6 +109,10 @@ type AuthLoginRequest struct {
 
 // swagger:response AuthLoginResponse
 type AuthLoginResponse struct {
+	// In: body
+	Body struct {
+		*entity.Session
+	}
 }
 
 // swagger:route POST /api/v1/auth/login Auth AuthLoginRequest
@@ -141,7 +152,10 @@ func (s *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SetSessionCookie(session, w)
+	err = utils.Response(w, session)
+	if err != nil {
+		logger.Error.Printf(err.Error())
+	}
 }
 
 /*

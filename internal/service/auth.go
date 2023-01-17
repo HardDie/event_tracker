@@ -23,7 +23,7 @@ type IAuth interface {
 	Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User, error)
 	Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, error)
 	Logout(ctx context.Context, sessionID int32) error
-	GenerateCookie(ctx context.Context, userID int32) (string, error)
+	GenerateCookie(ctx context.Context, userID int32) (*entity.Session, error)
 	ValidateCookie(ctx context.Context, session string) (*entity.Session, error)
 	GetUserInfo(ctx context.Context, userID int32) (*entity.User, error)
 }
@@ -136,20 +136,21 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 func (s *Auth) Logout(ctx context.Context, sessionID int32) error {
 	return s.sessionRepository.DeleteByID(ctx, sessionID)
 }
-func (s *Auth) GenerateCookie(ctx context.Context, userID int32) (string, error) {
+func (s *Auth) GenerateCookie(ctx context.Context, userID int32) (*entity.Session, error) {
 	// Generate session key
 	sessionKey, err := utils.GenerateSessionKey()
 	if err != nil {
-		return "", fmt.Errorf("generate session key: %w", err)
+		return nil, fmt.Errorf("generate session key: %w", err)
 	}
 
 	// Write session to DB
-	_, err = s.sessionRepository.CreateOrUpdate(ctx, userID, utils.HashSha256(sessionKey))
+	resp, err := s.sessionRepository.CreateOrUpdate(ctx, userID, utils.HashSha256(sessionKey))
 	if err != nil {
-		return "", fmt.Errorf("write session to DB: %w", err)
+		return nil, fmt.Errorf("write session to DB: %w", err)
 	}
+	resp.Session = sessionKey
 
-	return sessionKey, nil
+	return resp, nil
 }
 func (s *Auth) ValidateCookie(ctx context.Context, sessionToken string) (*entity.Session, error) {
 	// Check if session exist
