@@ -34,6 +34,7 @@ func (s *Event) RegisterPrivateRouter(router *mux.Router, middleware ...mux.Midd
 	eventTypeRouter := eventRouter.PathPrefix("/types").Subrouter()
 	eventTypeRouter.HandleFunc("", s.CreateEventType).Methods(http.MethodPost)
 	eventTypeRouter.HandleFunc("", s.ListEventType).Methods(http.MethodGet)
+	eventTypeRouter.HandleFunc("/{id:[0-9]+}", s.EditEventType).Methods(http.MethodPut)
 
 	eventRouter.Use(middleware...)
 }
@@ -129,6 +130,68 @@ func (s *Event) ListEventType(w http.ResponseWriter, r *http.Request) {
 		Total: total,
 	}
 	err = utils.ResponseWithMeta(w, eventTypes, meta)
+	if err != nil {
+		logger.Error.Println(err.Error())
+	}
+}
+
+// swagger:parameters EditEventTypeRequest
+type EditEventTypeRequest struct {
+	// In: path
+	ID int32 `json:"id"`
+	// In: body
+	Body struct {
+		dto.EditEventTypeDTO
+	}
+}
+
+// swagger:response EditEventTypeResponse
+type EditEventTypeResponse struct {
+	// In: body
+	Body struct {
+		*entity.EventType
+	}
+}
+
+// swagger:route PUT /api/v1/events/types/{id} EventType EditEventTypeRequest
+//
+// # Editing the event type
+//
+//	Responses:
+//	  200: EditEventTypeResponse
+func (s *Event) EditEventType(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := utils.GetUserIDFromContext(ctx)
+
+	req := &dto.EditEventTypeDTO{}
+	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
+	if err != nil {
+		logger.Error.Printf(err.Error())
+		http.Error(w, "Can't parse request", http.StatusBadRequest)
+		return
+	}
+
+	req.ID, err = utils.GetInt32FromPath(r, "id")
+	if err != nil {
+		logger.Error.Printf(err.Error())
+		http.Error(w, "Bad id in path", http.StatusBadRequest)
+		return
+	}
+
+	err = GetValidator().Struct(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	eventType, err := s.service.EditType(ctx, userID, req)
+	if err != nil {
+		logger.Error.Println("Can't edit event type:", err.Error())
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	err = utils.Response(w, eventType)
 	if err != nil {
 		logger.Error.Println(err.Error())
 	}
