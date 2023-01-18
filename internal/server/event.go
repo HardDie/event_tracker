@@ -125,6 +125,9 @@ func (s *Event) ListEventType(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
+	if eventTypes == nil {
+		eventTypes = make([]*entity.EventType, 0)
+	}
 
 	meta := &utils.Meta{
 		Total: total,
@@ -296,6 +299,9 @@ func (s *Event) ListEvent(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Println("Can't get event list:", err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
+	}
+	if events == nil {
+		events = make([]*entity.Event, 0)
 	}
 
 	meta := &utils.Meta{
