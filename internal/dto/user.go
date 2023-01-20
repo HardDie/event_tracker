@@ -10,6 +10,12 @@ type UpdatePasswordDTO struct {
 }
 
 type UpdateProfileDTO struct {
+	ID            int32   `json:"-" validate:"gt=0"`
 	DisplayedName string  `json:"displayedName" validate:"required"`
 	Email         *string `json:"email" validate:"omitempty,email"`
+}
+
+type UpdateProfileImageDTO struct {
+	ID           int32   `json:"-" validate:"gt=0"`
+	ProfileImage *string `json:"profileImage" validate:"omitempty,max=10000,base64"`
 }

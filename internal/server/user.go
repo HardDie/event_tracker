@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -21,20 +22,17 @@ func NewUser(service service.IUser) *User {
 		service: service,
 	}
 }
-func (s *User) RegisterPublicRouter(router *mux.Router, middleware ...mux.MiddlewareFunc) {
-	userRouter := router.PathPrefix("").Subrouter()
-	userRouter.HandleFunc("/{id:[0-9]+}", s.Get).Methods(http.MethodGet)
-	userRouter.Use(middleware...)
-}
 func (s *User) RegisterPrivateRouter(router *mux.Router, middleware ...mux.MiddlewareFunc) {
 	userRouter := router.PathPrefix("").Subrouter()
+	userRouter.HandleFunc("/{id:[0-9]+}", s.Get).Methods(http.MethodGet)
 	userRouter.HandleFunc("/password", s.Password).Methods(http.MethodPut)
-	userRouter.HandleFunc("/profile", s.Profile).Methods(http.MethodPut)
+	userRouter.HandleFunc("/profile", s.UpdateProfile).Methods(http.MethodPut)
+	userRouter.HandleFunc("/image", s.UpdateImage).Methods(http.MethodPut)
 	userRouter.Use(middleware...)
 }
 
 /*
- * Public
+ * Private
  */
 
 // swagger:parameters UserGetRequest
@@ -59,15 +57,16 @@ type UserGetResponse struct {
 //	  200: UserGetResponse
 func (s *User) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID := utils.GetUserIDFromContext(ctx)
 
-	userID, err := utils.GetInt32FromPath(r, "id")
+	id, err := utils.GetInt32FromPath(r, "id")
 	if err != nil {
 		logger.Error.Printf(err.Error())
 		http.Error(w, "Bad id in path", http.StatusBadRequest)
 		return
 	}
 	req := dto.GetUserDTO{
-		ID: userID,
+		ID: id,
 	}
 
 	err = GetValidator().Struct(req)
@@ -76,7 +75,7 @@ func (s *User) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.service.Get(ctx, userID)
+	user, err := s.service.Get(ctx, id, userID)
 	if err != nil {
 		logger.Error.Println("Can't get post:", err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -88,10 +87,6 @@ func (s *User) Get(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Println(err.Error())
 	}
 }
-
-/*
- * Private
- */
 
 // swagger:parameters UserPasswordRequest
 type UserPasswordRequest struct {
@@ -137,25 +132,29 @@ func (s *User) Password(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// swagger:parameters UserProfileRequest
-type UserProfileRequest struct {
+// swagger:parameters UserUpdateProfileRequest
+type UserUpdateProfileRequest struct {
 	// In: body
 	Body struct {
 		dto.UpdateProfileDTO
 	}
 }
 
-// swagger:response UserProfileResponse
-type UserProfileResponse struct {
+// swagger:response UserUpdateProfileResponse
+type UserUpdateProfileResponse struct {
+	// In: body
+	Body struct {
+		*entity.User
+	}
 }
 
-// swagger:route PUT /api/v1/user/profile User UserProfileRequest
+// swagger:route PUT /api/v1/user/profile User UserUpdateProfileRequest
 //
 // # Updating user information
 //
 //	Responses:
-//	  200: UserProfileResponse
-func (s *User) Profile(w http.ResponseWriter, r *http.Request) {
+//	  200: UserUpdateProfileResponse
+func (s *User) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID := utils.GetUserIDFromContext(ctx)
 
@@ -166,6 +165,7 @@ func (s *User) Profile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
+	req.ID = userID
 
 	err = GetValidator().Struct(req)
 	if err != nil {
@@ -173,9 +173,65 @@ func (s *User) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.service.Profile(ctx, req, userID)
+	user, err := s.service.UpdateProfile(ctx, req)
 	if err != nil {
 		logger.Error.Println("Can't update user profile:", err.Error())
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	err = utils.Response(w, user)
+	if err != nil {
+		logger.Error.Println(err.Error())
+	}
+}
+
+// swagger:parameters UserUpdateImageRequest
+type UserUpdateImageRequest struct {
+	// In: body
+	Body struct {
+		dto.UpdateProfileImageDTO
+	}
+}
+
+// swagger:response UserUpdateImageResponse
+type UserUpdateImageResponse struct {
+	// In: body
+	Body struct {
+		*entity.User
+	}
+}
+
+// swagger:route PUT /api/v1/user/image User UserUpdateImageRequest
+//
+// # Updating user profile image
+//
+//	Responses:
+//	  200: UserUpdateImageResponse
+func (s *User) UpdateImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := utils.GetUserIDFromContext(ctx)
+
+	req := &dto.UpdateProfileImageDTO{}
+	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
+	if err != nil {
+		logger.Error.Printf(err.Error())
+		http.Error(w, "Can't parse request", http.StatusBadRequest)
+		return
+	}
+	req.ID = userID
+
+	err = GetValidator().Struct(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Println("Length:", len(*req.ProfileImage))
+
+	user, err := s.service.UpdateImage(ctx, req)
+	if err != nil {
+		logger.Error.Println("Can't update user image:", err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}

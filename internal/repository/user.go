@@ -16,7 +16,8 @@ type IUser interface {
 	GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error)
 	GetByName(ctx context.Context, name string) (*entity.User, error)
 	Create(ctx context.Context, name, displayedName string) (*entity.User, error)
-	Update(ctx context.Context, req *dto.UpdateProfileDTO, id int32) (*entity.User, error)
+	UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error)
+	UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error)
 }
 
 type User struct {
@@ -35,7 +36,7 @@ func (r *User) GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*en
 	}
 
 	q := gosql.NewSelect().From("users")
-	q.Columns().Add("displayed_name", "created_at", "updated_at", "deleted_at")
+	q.Columns().Add("displayed_name", "profile_image", "created_at", "updated_at", "deleted_at")
 	if showPrivateInfo {
 		q.Columns().Add("username", "email")
 	}
@@ -45,10 +46,10 @@ func (r *User) GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*en
 
 	var err error
 	if showPrivateInfo {
-		err = row.Scan(&user.DisplayedName, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		err = row.Scan(&user.DisplayedName, &user.ProfileImage, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
 			&user.Username, &user.Email)
 	} else {
-		err = row.Scan(&user.DisplayedName, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+		err = row.Scan(&user.DisplayedName, &user.ProfileImage, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -65,12 +66,12 @@ func (r *User) GetByName(ctx context.Context, name string) (*entity.User, error)
 	}
 
 	q := gosql.NewSelect().From("users")
-	q.Columns().Add("id", "displayed_name", "email", "created_at", "updated_at", "deleted_at")
+	q.Columns().Add("id", "displayed_name", "email", "profile_image", "created_at", "updated_at", "deleted_at")
 	q.Where().AddExpression("username = ?", name)
 	q.Where().AddExpression("deleted_at IS NULL")
 	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
-	err := row.Scan(&user.ID, &user.DisplayedName, &user.Email, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+	err := row.Scan(&user.ID, &user.DisplayedName, &user.Email, &user.ProfileImage, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -97,9 +98,9 @@ func (r *User) Create(ctx context.Context, name, displayedName string) (*entity.
 	}
 	return user, nil
 }
-func (r *User) Update(ctx context.Context, req *dto.UpdateProfileDTO, id int32) (*entity.User, error) {
+func (r *User) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
 	user := &entity.User{
-		ID:            id,
+		ID:            req.ID,
 		DisplayedName: req.DisplayedName,
 		Email:         req.Email,
 	}
@@ -108,12 +109,32 @@ func (r *User) Update(ctx context.Context, req *dto.UpdateProfileDTO, id int32) 
 	q.Set().Append("displayed_name = ?", req.DisplayedName)
 	q.Set().Append("email = ?", req.Email)
 	q.Set().Append("updated_at = datetime('now')")
-	q.Where().AddExpression("id = ?", id)
+	q.Where().AddExpression("id = ?", req.ID)
 	q.Where().AddExpression("deleted_at IS NULL")
-	q.Returning().Add("username", "created_at", "updated_at")
+	q.Returning().Add("username", "profile_image", "created_at", "updated_at")
 	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
-	err := row.Scan(&user.Username, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.Username, &user.ProfileImage, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+func (r *User) UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
+	user := &entity.User{
+		ID:           req.ID,
+		ProfileImage: req.ProfileImage,
+	}
+
+	q := gosql.NewUpdate().Table("users")
+	q.Set().Append("profile_image = ?", req.ProfileImage)
+	q.Set().Append("updated_at = datetime('now')")
+	q.Where().AddExpression("id = ?", req.ID)
+	q.Where().AddExpression("deleted_at IS NULL")
+	q.Returning().Add("username", "displayed_name", "email", "created_at", "updated_at")
+	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+
+	err := row.Scan(&user.Username, &user.DisplayedName, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

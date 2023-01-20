@@ -11,10 +11,11 @@ import (
 )
 
 type IUser interface {
-	Get(ctx context.Context, id int32) (*entity.User, error)
+	Get(ctx context.Context, id, userID int32) (*entity.User, error)
 
 	Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID int32) error
-	Profile(ctx context.Context, req *dto.UpdateProfileDTO, userID int32) (*entity.User, error)
+	UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error)
+	UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error)
 }
 
 type User struct {
@@ -29,8 +30,8 @@ func NewUser(repository repository.IUser, password repository.IPassword) *User {
 	}
 }
 
-func (s *User) Get(ctx context.Context, id int32) (*entity.User, error) {
-	return s.userRepository.GetByID(ctx, id, false)
+func (s *User) Get(ctx context.Context, id, userID int32) (*entity.User, error) {
+	return s.userRepository.GetByID(ctx, id, id == userID)
 }
 
 func (s *User) Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID int32) error {
@@ -61,6 +62,9 @@ func (s *User) Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID 
 	}
 	return nil
 }
-func (s *User) Profile(ctx context.Context, req *dto.UpdateProfileDTO, userID int32) (*entity.User, error) {
-	return s.userRepository.Update(ctx, req, userID)
+func (s *User) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
+	return s.userRepository.UpdateProfile(ctx, req)
+}
+func (s *User) UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
+	return s.userRepository.UpdateImage(ctx, req)
 }

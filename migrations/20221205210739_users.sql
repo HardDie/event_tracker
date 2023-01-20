@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     username        TEXT      NOT NULL UNIQUE,
     displayed_name  TEXT,
     email           TEXT,
+    profile_image   TEXT,
     created_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     updated_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     deleted_at      TIMESTAMP

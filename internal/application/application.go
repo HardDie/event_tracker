@@ -71,7 +71,6 @@ func Get() (*Application, error) {
 	authServer.RegisterPrivateRouter(authRouter, timeoutMiddleware.RequestMiddleware, authMiddleware.RequestMiddleware)
 
 	userRouter := v1Router.PathPrefix("/user").Subrouter()
-	userServer.RegisterPublicRouter(userRouter, timeoutMiddleware.RequestMiddleware)
 	userServer.RegisterPrivateRouter(userRouter, timeoutMiddleware.RequestMiddleware, authMiddleware.RequestMiddleware)
 
 	eventRouter := v1Router.PathPrefix("/events").Subrouter()
