@@ -49,10 +49,12 @@ func Get() (*Application, error) {
 	passwordRepository := repository.NewPassword(app.DB)
 	sessionRepository := repository.NewSession(app.DB)
 	eventRepository := repository.NewEvent(app.DB)
+	friendRepository := repository.NewFriend(app.DB)
 
 	// Init services
 	authService := service.NewAuth(app.Cfg, userRepository, passwordRepository, sessionRepository)
 	eventService := service.NewEvent(eventRepository)
+	friendService := service.NewFriend(friendRepository, userRepository)
 
 	// Init severs
 	authServer := server.NewAuth(app.Cfg, authService)
@@ -60,6 +62,7 @@ func Get() (*Application, error) {
 		service.NewUser(userRepository, passwordRepository),
 	)
 	eventServer := server.NewEvent(eventService)
+	friendServer := server.NewFriend(friendService)
 
 	// Middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -75,6 +78,9 @@ func Get() (*Application, error) {
 
 	eventRouter := v1Router.PathPrefix("/events").Subrouter()
 	eventServer.RegisterPrivateRouter(eventRouter, timeoutMiddleware.RequestMiddleware, authMiddleware.RequestMiddleware)
+
+	friendRouter := v1Router.PathPrefix("/friends").Subrouter()
+	friendServer.RegisterPrivateRouter(friendRouter, timeoutMiddleware.RequestMiddleware, authMiddleware.RequestMiddleware)
 
 	return app, nil
 }
