@@ -5,3 +5,7 @@ swagger:
 .PHONY: swagger-install
 swagger-install:
 	go install github.com/go-swagger/go-swagger/cmd/swagger@latest
+
+.PHONY: build
+build:
+	go build -o event_tracker cmd/event_tracker/main.go
