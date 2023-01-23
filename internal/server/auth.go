@@ -52,7 +52,7 @@ type AuthRegisterRequest struct {
 type AuthRegisterResponse struct {
 	// In: body
 	Body struct {
-		*entity.Session
+		Data *entity.Session `json:"data"`
 	}
 }
 
@@ -111,7 +111,7 @@ type AuthLoginRequest struct {
 type AuthLoginResponse struct {
 	// In: body
 	Body struct {
-		*entity.Session
+		Data *entity.Session `json:"data"`
 	}
 }
 

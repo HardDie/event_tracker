@@ -55,7 +55,7 @@ type CreateEventTypeRequest struct {
 type CreateEventTypeResponse struct {
 	// In: body
 	Body struct {
-		*entity.EventType
+		Data *entity.EventType `json:"data"`
 	}
 }
 
@@ -152,7 +152,7 @@ type EditEventTypeRequest struct {
 type EditEventTypeResponse struct {
 	// In: body
 	Body struct {
-		*entity.EventType
+		Data *entity.EventType `json:"data"`
 	}
 }
 
@@ -212,7 +212,7 @@ type CreateEventRequest struct {
 type CreateEventResponse struct {
 	// In: body
 	Body struct {
-		*entity.Event
+		Data *entity.Event `json:"data"`
 	}
 }
 

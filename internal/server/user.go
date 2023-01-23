@@ -144,7 +144,7 @@ type UserUpdateProfileRequest struct {
 type UserUpdateProfileResponse struct {
 	// In: body
 	Body struct {
-		*entity.User
+		Data *entity.User `json:"data"`
 	}
 }
 
@@ -198,7 +198,7 @@ type UserUpdateImageRequest struct {
 type UserUpdateImageResponse struct {
 	// In: body
 	Body struct {
-		*entity.User
+		Data *entity.User `json:"data"`
 	}
 }
 
