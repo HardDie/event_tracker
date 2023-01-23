@@ -72,7 +72,7 @@ func Get() (*Application, error) {
 
 	// Register servers
 	systemRouter := v1Router.PathPrefix("/system").Subrouter()
-	systemServer.RegisterPublicRouter(systemRouter, timeoutMiddleware.RequestMiddleware)
+	systemServer.RegisterPublicRouter(systemRouter, middleware.CorsMiddleware, timeoutMiddleware.RequestMiddleware)
 
 	authRouter := v1Router.PathPrefix("/auth").Subrouter()
 	authServer.RegisterPublicRouter(authRouter)
