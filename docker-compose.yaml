@@ -17,6 +17,7 @@ services:
     image: caddy:latest
     volumes:
       - './Caddyfile:/etc/caddy/Caddyfile:ro'
-      - './caddy_data:/data'
+      - './caddy/data:/data'
+      - './caddy/config:/config'
     ports:
       - 443:443
