@@ -12,4 +12,4 @@ services:
     working_dir: '/home/app'
     ports:
       - 8080:8080
-    command: sh -c "go run cmd/event_tracker/main.go"
+    command: sh -c "./event_tracker"
