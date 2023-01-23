@@ -8,4 +8,4 @@ swagger-install:
 
 .PHONY: build
 build:
-	go build -o event_tracker cmd/event_tracker/main.go
+	CGO_ENABLED=0 go build -o event_tracker cmd/event_tracker/main.go
