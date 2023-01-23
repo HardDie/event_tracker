@@ -13,3 +13,9 @@ services:
     ports:
       - 8080:8080
     command: sh -c "./event_tracker"
+  caddy:
+    image: caddy:latest
+    volumes:
+      - './Caddyfile:/etc/caddy/Caddyfile:ro'
+    ports:
+      - 443:443
