@@ -52,11 +52,13 @@ func Get() (*Application, error) {
 	friendRepository := repository.NewFriend(app.DB)
 
 	// Init services
+	systemService := service.NewSystem()
 	authService := service.NewAuth(app.Cfg, userRepository, passwordRepository, sessionRepository)
 	eventService := service.NewEvent(eventRepository)
 	friendService := service.NewFriend(friendRepository, userRepository)
 
 	// Init severs
+	systemServer := server.NewSystem(systemService)
 	authServer := server.NewAuth(app.Cfg, authService)
 	userServer := server.NewUser(
 		service.NewUser(userRepository, passwordRepository),
@@ -69,6 +71,9 @@ func Get() (*Application, error) {
 	timeoutMiddleware := middleware.NewTimeoutRequestMiddleware(time.Duration(app.Cfg.RequestTimeout) * time.Second)
 
 	// Register servers
+	systemRouter := v1Router.PathPrefix("/system").Subrouter()
+	systemServer.RegisterPublicRouter(systemRouter, timeoutMiddleware.RequestMiddleware)
+
 	authRouter := v1Router.PathPrefix("/auth").Subrouter()
 	authServer.RegisterPublicRouter(authRouter)
 	authServer.RegisterPrivateRouter(authRouter, timeoutMiddleware.RequestMiddleware, authMiddleware.RequestMiddleware)
