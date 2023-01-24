@@ -200,7 +200,7 @@ func (r *Friend) ListOfFriends(ctx context.Context, userID int32) ([]*entity.Use
 
 	q := gosql.NewSelect().From("friends f")
 	q.Columns().Add("u.id", "u.displayed_name", "u.profile_image")
-	q.Relate("JOIN users u ON f.user_id = u.id")
+	q.Relate("JOIN users u ON f.with_user_id = u.id")
 	q.Where().AddExpression("f.user_id = ?", userID)
 	q.Where().AddExpression("f.deleted_at IS NULL")
 	q.Where().AddExpression("u.deleted_at IS NULL")
