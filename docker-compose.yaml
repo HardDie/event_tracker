@@ -6,12 +6,11 @@ services:
     volumes:
       - '.:/home/app:ro'
       - './db:/db'
-      - './cache:/go'
     environment:
       - DB_PATH=/db/event.db
     working_dir: '/home/app'
     ports:
-      - 8080:8080
+      - 80:8080
     command: sh -c "./event_tracker"
   caddy:
     image: caddy:latest
