@@ -256,7 +256,7 @@ func (r *Event) FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedRespo
 	var res []*dto.FeedResponseDTO
 
 	q := gosql.NewSelect().From("friends f")
-	q.Columns().Add("u.id", "et.id", "et.event_type", "e.date", "e.created_at")
+	q.Columns().Add("e.id", "u.id", "et.id", "et.event_type", "e.date", "e.created_at")
 	q.Relate("JOIN users u ON f.with_user_id = u.id")
 	q.Relate("JOIN events e ON f.with_user_id = e.user_id")
 	q.Relate("JOIN event_types et ON e.type_id = et.id")
@@ -277,7 +277,7 @@ func (r *Event) FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedRespo
 
 	for rows.Next() {
 		event := &dto.FeedResponseDTO{}
-		err = rows.Scan(&event.UserID, &event.EventTypeID, &event.EventType, &event.Date, &event.CreatedAt)
+		err = rows.Scan(&event.EventID, &event.UserID, &event.EventTypeID, &event.EventType, &event.Date, &event.CreatedAt)
 		if err != nil {
 			logger.Error.Println(err.Error())
 			return nil, 0, ErrorInternal

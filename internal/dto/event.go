@@ -25,6 +25,7 @@ type ListEventDTO struct {
 }
 
 type FeedResponseDTO struct {
+	EventID     int32     `json:"eventId"`
 	UserID      int32     `json:"userId"`
 	EventTypeID int32     `json:"eventTypeId"`
 	EventType   string    `json:"eventType"`
