@@ -72,7 +72,7 @@ func (r *Friend) ListPendingInvitations(ctx context.Context, userID int32) ([]*d
 
 	for rows.Next() {
 		friendRequest := &dto.InviteListResponseDTO{}
-		err = rows.Scan(&friendRequest.ID, &friendRequest.UserID, &friendRequest.DisplayedName, &friendRequest.ProfileImage, &friendRequest.CreatedAt)
+		err = rows.Scan(&friendRequest.ID, &friendRequest.User.ID, &friendRequest.User.DisplayedName, &friendRequest.User.ProfileImage, &friendRequest.CreatedAt)
 		if err != nil {
 			logger.Error.Println(err.Error())
 			return nil, 0, ErrorInternal

@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/HardDie/event_tracker/internal/entity"
+)
 
 type InviteFriendDTO struct {
 	ID       int32  `json:"-" validate:"gt=0"`
@@ -8,9 +12,7 @@ type InviteFriendDTO struct {
 }
 
 type InviteListResponseDTO struct {
-	ID            int32     `json:"id"`
-	UserID        int32     `json:"userId"`
-	DisplayedName string    `json:"name"`
-	ProfileImage  *string   `json:"profileImage"`
-	CreatedAt     time.Time `json:"createdAt"`
+	ID        int32       `json:"id"`
+	User      entity.User `json:"user"`
+	CreatedAt time.Time   `json:"createdAt"`
 }
