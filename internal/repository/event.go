@@ -23,6 +23,8 @@ type IEvent interface {
 	CreateEvent(ctx context.Context, userID, eventTypeID int32, date time.Time) (*entity.Event, error)
 	DeleteEvent(ctx context.Context, userID, id int32) error
 	ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error)
+
+	FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error)
 }
 type Event struct {
 	db *db.DB
@@ -242,6 +244,51 @@ func (r *Event) ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, 0, ErrorEventNotExist
+		}
+		logger.Error.Println(err.Error())
+		return nil, 0, ErrorInternal
+	}
+
+	return res, int32(len(res)), nil
+}
+
+func (r *Event) FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error) {
+	var res []*dto.FeedResponseDTO
+
+	q := gosql.NewSelect().From("friends f")
+	q.Columns().Add("u.id", "et.id", "et.event_type", "e.date", "e.created_at")
+	q.Relate("JOIN users u ON f.with_user_id = u.id")
+	q.Relate("JOIN events e ON f.with_user_id = e.user_id")
+	q.Relate("JOIN event_types et ON e.type_id = et.id")
+	q.Where().AddExpression("f.user_id = ?", userID)
+	q.Where().AddExpression("f.deleted_at IS NULL")
+	q.Where().AddExpression("u.deleted_at IS NULL")
+	q.Where().AddExpression("et.deleted_at IS NULL")
+	q.Where().AddExpression("et.is_visible")
+	q.AddOrder("e.id DESC")
+	q.SetPagination(100, 0)
+
+	rows, err := r.db.DB.QueryContext(ctx, q.String(), q.GetArguments()...)
+	if err != nil {
+		logger.Error.Println(err.Error())
+		return nil, 0, ErrorInternal
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		event := &dto.FeedResponseDTO{}
+		err = rows.Scan(&event.UserID, &event.EventTypeID, &event.EventType, &event.Date, &event.CreatedAt)
+		if err != nil {
+			logger.Error.Println(err.Error())
+			return nil, 0, ErrorInternal
+		}
+		res = append(res, event)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, 0, nil
 		}
 		logger.Error.Println(err.Error())
 		return nil, 0, ErrorInternal

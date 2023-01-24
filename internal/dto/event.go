@@ -24,6 +24,14 @@ type ListEventDTO struct {
 	Date       time.Time  `json:"date" validate:"required"`
 }
 
+type FeedResponseDTO struct {
+	UserID      int32     `json:"userId"`
+	EventTypeID int32     `json:"eventTypeId"`
+	EventType   string    `json:"eventType"`
+	Date        time.Time `json:"date"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
 /*
  * internal
  */

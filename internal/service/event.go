@@ -17,6 +17,8 @@ type IEvent interface {
 	CreateEvent(ctx context.Context, userID int32, req *dto.CreateEventDTO) (*entity.Event, error)
 	DeleteEvent(ctx context.Context, userID int32, id int32) error
 	ListEvent(ctx context.Context, userId int32, req *dto.ListEventDTO) ([]*entity.Event, int32, error)
+
+	FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error)
 }
 
 type Event struct {
@@ -60,4 +62,8 @@ func (s *Event) ListEvent(ctx context.Context, userID int32, req *dto.ListEventD
 		PeriodType:  req.PeriodType,
 		Date:        req.Date,
 	})
+}
+
+func (s *Event) FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error) {
+	return s.repository.FriendsFeed(ctx, userID)
 }

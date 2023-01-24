@@ -25,6 +25,8 @@ func NewFriend(service service.IFriend) *Friend {
 func (s *Friend) RegisterPrivateRouter(router *mux.Router, middleware ...mux.MiddlewareFunc) {
 	friendRouter := router.PathPrefix("").Subrouter()
 	friendRouter.HandleFunc("", s.FriendList).Methods(http.MethodGet)
+	friendRouter.HandleFunc("/{id:[0-9]+}", s.InviteAccept).Methods(http.MethodDelete)
+
 	friendRouter.HandleFunc("/invites", s.InviteFriend).Methods(http.MethodPost)
 	friendRouter.HandleFunc("/invites", s.InviteList).Methods(http.MethodGet)
 	friendRouter.HandleFunc("/invites/{id:[0-9]+}", s.InviteAccept).Methods(http.MethodPost)

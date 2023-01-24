@@ -22,14 +22,11 @@ func NewEvent(service service.IEvent) *Event {
 	}
 }
 
-func (s *Event) RegisterPublicRouter(router *mux.Router, middleware ...mux.MiddlewareFunc) {
-	eventRouter := router.PathPrefix("").Subrouter()
-	eventRouter.Use(middleware...)
-}
 func (s *Event) RegisterPrivateRouter(router *mux.Router, middleware ...mux.MiddlewareFunc) {
 	eventRouter := router.PathPrefix("").Subrouter()
 	eventRouter.HandleFunc("", s.CreateEvent).Methods(http.MethodPost)
 	eventRouter.HandleFunc("/list", s.ListEvent).Methods(http.MethodPost)
+	eventRouter.HandleFunc("/feed", s.FeedEvents).Methods(http.MethodGet)
 
 	eventTypeRouter := eventRouter.PathPrefix("/types").Subrouter()
 	eventTypeRouter.HandleFunc("", s.CreateEventType).Methods(http.MethodPost)
@@ -302,6 +299,48 @@ func (s *Event) ListEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	if events == nil {
 		events = make([]*entity.Event, 0)
+	}
+
+	meta := &utils.Meta{
+		Total: total,
+	}
+	err = utils.ResponseWithMeta(w, events, meta)
+	if err != nil {
+		logger.Error.Println(err.Error())
+	}
+}
+
+// swagger:parameters FeedEventsRequest
+type FeedEventsRequest struct {
+}
+
+// swagger:response FeedEventsResponse
+type FeedEventsResponse struct {
+	// In: body
+	Body struct {
+		Data []*dto.FeedResponseDTO `json:"data"`
+		Meta *utils.Meta            `json:"meta"`
+	}
+}
+
+// swagger:route GET /api/v1/events/feed Event FeedEventsRequest
+//
+// # Getting a list of friend events
+//
+//	Responses:
+//	  200: FeedEventsResponse
+func (s *Event) FeedEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := utils.GetUserIDFromContext(ctx)
+
+	events, total, err := s.service.FriendsFeed(ctx, userID)
+	if err != nil {
+		logger.Error.Println("Can't get feed:", err.Error())
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+	if events == nil {
+		events = make([]*dto.FeedResponseDTO, 0)
 	}
 
 	meta := &utils.Meta{
