@@ -14,6 +14,7 @@ type DB struct {
 func Get(dbpath string) (*DB, error) {
 	flags := []string{
 		"_pragma=foreign_keys(1)",
+		"_pragma=busy_timeout(5000)",
 	}
 
 	db, err := sql.Open("sqlite", dbpath+"?"+strings.Join(flags, "&"))
