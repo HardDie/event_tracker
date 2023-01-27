@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS event_types (
     updated_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     deleted_at TIMESTAMP
 );
+CREATE INDEX event_types_id_idx ON event_types (id);
+CREATE INDEX event_types_user_id_idx ON event_types (user_id);
 -- +goose StatementEnd
 
 -- +goose Down

@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS friend_invites (
     updated_at   TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     deleted_at   TIMESTAMP
 );
+CREATE INDEX friend_invites_id_idx ON friend_invites (id);
+CREATE INDEX friend_invites_user_id_idx ON friend_invites (user_id);
+CREATE INDEX friend_invites_with_user_id_idx ON friend_invites (with_user_id);
 -- +goose StatementEnd
 
 -- +goose Down

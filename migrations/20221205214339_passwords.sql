@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS passwords (
     deleted_at      TIMESTAMP,
     blocked_at      TIMESTAMP
 );
+CREATE INDEX passwords_id_idx ON passwords (id);
 -- +goose StatementEnd
 
 -- +goose Down

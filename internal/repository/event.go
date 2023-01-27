@@ -194,31 +194,31 @@ func (r *Event) DeleteEvent(ctx context.Context, userID, id int32) error {
 func (r *Event) ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error) {
 	var res []*entity.Event
 
-	q := gosql.NewSelect().From("events ev")
-	q.Relate("JOIN event_types et ON ev.type_id = et.id")
-	q.Columns().Add("ev.id", "ev.user_id", "ev.type_id", "ev.date", "ev.created_at", "ev.updated_at")
-	q.Where().AddExpression("ev.deleted_at IS NULL")
+	q := gosql.NewSelect().From("events e")
+	q.Relate("JOIN event_types et ON e.type_id = et.id")
+	q.Columns().Add("e.id", "e.user_id", "e.type_id", "e.date", "e.created_at", "e.updated_at")
+	q.Where().AddExpression("e.deleted_at IS NULL")
 	q.Where().AddExpression("et.deleted_at IS NULL")
-	q.Where().AddExpression("ev.user_id = ?", filter.UserID)
+	q.Where().AddExpression("e.user_id = ?", filter.UserID)
 	if filter.TypeID != nil {
-		q.Where().AddExpression("ev.type_id = ?", filter.TypeID)
+		q.Where().AddExpression("e.type_id = ?", filter.TypeID)
 	}
 	if filter.OnlyVisible {
 		q.Where().AddExpression("et.is_visible")
 	}
 	switch filter.PeriodType {
 	case dto.PeriodDay:
-		q.Where().AddExpression("ev.date = ?", timeToYMD(filter.Date))
+		q.Where().AddExpression("e.date = ?", timeToYMD(filter.Date))
 	case dto.PeriodMonth:
 		first, last := timeToYM(filter.Date)
-		q.Where().AddExpression("ev.date >= ?", first)
-		q.Where().AddExpression("ev.date <= ?", last)
+		q.Where().AddExpression("e.date >= ?", first)
+		q.Where().AddExpression("e.date <= ?", last)
 	case dto.PeriodYear:
 		first, last := timeToY(filter.Date)
-		q.Where().AddExpression("ev.date >= ?", first)
-		q.Where().AddExpression("ev.date <= ?", last)
+		q.Where().AddExpression("e.date >= ?", first)
+		q.Where().AddExpression("e.date <= ?", last)
 	}
-	q.AddOrder("ev.created_at")
+	q.AddOrder("e.created_at")
 
 	rows, err := r.db.DB.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {

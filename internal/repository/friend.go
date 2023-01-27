@@ -59,9 +59,9 @@ func (r *Friend) ListPendingInvitations(ctx context.Context, userID int32) ([]*d
 	q := gosql.NewSelect().From("friend_invites fi")
 	q.Columns().Add("fi.id", "fi.user_id", "u.displayed_name", "u.profile_image", "fi.created_at")
 	q.Relate("JOIN users u ON fi.user_id = u.id")
+	q.Where().AddExpression("fi.with_user_id = ?", userID)
 	q.Where().AddExpression("fi.deleted_at IS NULL")
 	q.Where().AddExpression("u.deleted_at IS NULL")
-	q.Where().AddExpression("fi.with_user_id = ?", userID)
 	q.AddOrder("fi.id")
 	rows, err := r.db.DB.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     deleted_at      TIMESTAMP
 );
+CREATE INDEX users_id_idx ON users (id);
 -- +goose StatementEnd
 
 -- +goose Down

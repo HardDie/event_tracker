@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     updated_at   TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     deleted_at   TIMESTAMP
 );
+CREATE INDEX sessions_id_idx ON sessions (id);
 -- +goose StatementEnd
 
 -- +goose Down

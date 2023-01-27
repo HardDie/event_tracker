@@ -1,13 +1,18 @@
 package application
 
 import (
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
 
 	"github.com/HardDie/event_tracker/internal/config"
 	"github.com/HardDie/event_tracker/internal/db"
+	"github.com/HardDie/event_tracker/internal/logger"
 	"github.com/HardDie/event_tracker/internal/middleware"
 	"github.com/HardDie/event_tracker/internal/migration"
 	"github.com/HardDie/event_tracker/internal/repository"
@@ -91,5 +96,23 @@ func Get() (*Application, error) {
 }
 
 func (app *Application) Run() error {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		app.Stop()
+		os.Exit(0)
+	}()
+
+	defer app.Stop()
 	return http.ListenAndServe(app.Cfg.Port, app.Router)
+}
+
+func (app *Application) Stop() {
+	err := app.DB.DB.Close()
+	if err != nil {
+		logger.Error.Println("error closing DB connection:", err.Error())
+	}
+	app.DB = nil
+	log.Println("Done")
 }
