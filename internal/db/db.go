@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -17,7 +18,7 @@ type DB struct {
 func Get(dbpath string) (*DB, error) {
 	flags := []string{
 		"_fk=true",      // "_pragma=foreign_keys(1)",
-		"_timeout=5000", // "_pragma=busy_timeout(3000)",
+		"_timeout=5000", // "_pragma=busy_timeout(5000)",
 		"_journal=WAL",  // "_pragma=journal_mode(WAL)",
 	}
 
@@ -35,4 +36,25 @@ func Get(dbpath string) (*DB, error) {
 	return &DB{
 		DB: db,
 	}, nil
+}
+
+func (db *DB) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return db.DB.BeginTx(ctx, nil)
+}
+func (db *DB) EndTx(tx *sql.Tx, err error) error {
+	if err != nil {
+		err = tx.Rollback()
+		if err != nil {
+			logger.Error.Println("error rollback tx:", err.Error())
+			return err
+		}
+		return nil
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Error.Println("error commit tx:", err.Error())
+		return err
+	}
+	return nil
 }

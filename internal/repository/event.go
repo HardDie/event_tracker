@@ -8,35 +8,31 @@ import (
 
 	"github.com/dimonrus/gosql"
 
-	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
 	"github.com/HardDie/event_tracker/internal/logger"
 )
 
 type IEvent interface {
-	CreateType(ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error)
-	DeleteType(ctx context.Context, userID, id int32) error
-	ListType(ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error)
-	EditType(ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error)
+	CreateType(tx IQuery, ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error)
+	DeleteType(tx IQuery, ctx context.Context, userID, id int32) error
+	ListType(tx IQuery, ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error)
+	EditType(tx IQuery, ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error)
 
-	CreateEvent(ctx context.Context, userID, eventTypeID int32, date time.Time) (*entity.Event, error)
-	DeleteEvent(ctx context.Context, userID, id int32) error
-	ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error)
+	CreateEvent(tx IQuery, ctx context.Context, userID, eventTypeID int32, date time.Time) (*entity.Event, error)
+	DeleteEvent(tx IQuery, ctx context.Context, userID, id int32) error
+	ListEvent(tx IQuery, ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error)
 
-	FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error)
+	FriendsFeed(tx IQuery, ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error)
 }
 type Event struct {
-	db *db.DB
 }
 
-func NewEvent(db *db.DB) *Event {
-	return &Event{
-		db: db,
-	}
+func NewEvent() *Event {
+	return &Event{}
 }
 
-func (r *Event) CreateType(ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error) {
+func (r *Event) CreateType(tx IQuery, ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error) {
 	eventType := &entity.EventType{
 		EventType: name,
 		IsVisible: isVisible,
@@ -46,7 +42,7 @@ func (r *Event) CreateType(ctx context.Context, userID int32, name string, isVis
 	q.Columns().Add("event_type", "is_visible", "user_id")
 	q.Columns().Arg(name, isVisible, userID)
 	q.Returning().Add("id", "created_at", "updated_at")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&eventType.ID, &eventType.CreatedAt, &eventType.UpdatedAt)
 	if err != nil {
@@ -58,14 +54,14 @@ func (r *Event) CreateType(ctx context.Context, userID int32, name string, isVis
 	}
 	return eventType, nil
 }
-func (r *Event) DeleteType(ctx context.Context, userID, id int32) error {
+func (r *Event) DeleteType(tx IQuery, ctx context.Context, userID, id int32) error {
 	q := gosql.NewUpdate().Table("event_types")
 	q.Set().Add("deleted_at = datetime('now')")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("user_id = ?", userID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("id")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&id)
 	if err != nil {
@@ -77,7 +73,7 @@ func (r *Event) DeleteType(ctx context.Context, userID, id int32) error {
 	}
 	return nil
 }
-func (r *Event) ListType(ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error) {
+func (r *Event) ListType(tx IQuery, ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error) {
 	var res []*entity.EventType
 
 	q := gosql.NewSelect().From("event_types")
@@ -88,7 +84,7 @@ func (r *Event) ListType(ctx context.Context, userID int32, onlyVisible bool) ([
 		q.Where().AddExpression("is_visible")
 	}
 	q.AddOrder("event_type")
-	rows, err := r.db.DB.QueryContext(ctx, q.String(), q.GetArguments()...)
+	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
 		logger.Error.Println(err.Error())
 		return nil, 0, ErrorInternal
@@ -119,7 +115,7 @@ func (r *Event) ListType(ctx context.Context, userID int32, onlyVisible bool) ([
 
 	return res, int32(len(res)), nil
 }
-func (r *Event) EditType(ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error) {
+func (r *Event) EditType(tx IQuery, ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error) {
 	eventType := &entity.EventType{
 		ID:        id,
 		UserID:    userID,
@@ -135,7 +131,7 @@ func (r *Event) EditType(ctx context.Context, userID, id int32, name string, isV
 	q.Where().AddExpression("user_id = ?", userID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("created_at", "updated_at")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&eventType.CreatedAt, &eventType.UpdatedAt)
 	if err != nil {
@@ -148,7 +144,7 @@ func (r *Event) EditType(ctx context.Context, userID, id int32, name string, isV
 	return eventType, nil
 }
 
-func (r *Event) CreateEvent(ctx context.Context, userID, typeID int32, date time.Time) (*entity.Event, error) {
+func (r *Event) CreateEvent(tx IQuery, ctx context.Context, userID, typeID int32, date time.Time) (*entity.Event, error) {
 	date = timeToYMD(date)
 	event := &entity.Event{
 		UserID: userID,
@@ -160,7 +156,7 @@ func (r *Event) CreateEvent(ctx context.Context, userID, typeID int32, date time
 	q.Columns().Add("user_id", "type_id", "date")
 	q.Columns().Arg(userID, typeID, date)
 	q.Returning().Add("id", "created_at", "updated_at")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&event.ID, &event.CreatedAt, &event.UpdatedAt)
 	if err != nil {
@@ -172,14 +168,14 @@ func (r *Event) CreateEvent(ctx context.Context, userID, typeID int32, date time
 	}
 	return event, nil
 }
-func (r *Event) DeleteEvent(ctx context.Context, userID, id int32) error {
+func (r *Event) DeleteEvent(tx IQuery, ctx context.Context, userID, id int32) error {
 	q := gosql.NewUpdate().Table("events")
 	q.Set().Add("deleted_at = datetime('now')")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("user_id = ?", userID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("id")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&id)
 	if err != nil {
@@ -191,7 +187,7 @@ func (r *Event) DeleteEvent(ctx context.Context, userID, id int32) error {
 	}
 	return nil
 }
-func (r *Event) ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error) {
+func (r *Event) ListEvent(tx IQuery, ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error) {
 	var res []*entity.Event
 
 	q := gosql.NewSelect().From("events e")
@@ -220,7 +216,7 @@ func (r *Event) ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*
 	}
 	q.AddOrder("e.created_at")
 
-	rows, err := r.db.DB.QueryContext(ctx, q.String(), q.GetArguments()...)
+	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
 		logger.Error.Println(err.Error())
 		return nil, 0, ErrorInternal
@@ -252,7 +248,7 @@ func (r *Event) ListEvent(ctx context.Context, filter *dto.ListEventFilter) ([]*
 	return res, int32(len(res)), nil
 }
 
-func (r *Event) FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error) {
+func (r *Event) FriendsFeed(tx IQuery, ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error) {
 	var res []*dto.FeedResponseDTO
 
 	q := gosql.NewSelect().From("friends f")
@@ -268,7 +264,7 @@ func (r *Event) FriendsFeed(ctx context.Context, userID int32) ([]*dto.FeedRespo
 	q.AddOrder("e.id DESC")
 	q.SetPagination(100, 0)
 
-	rows, err := r.db.DB.QueryContext(ctx, q.String(), q.GetArguments()...)
+	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
 		logger.Error.Println(err.Error())
 		return nil, 0, ErrorInternal

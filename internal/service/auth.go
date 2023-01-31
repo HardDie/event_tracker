@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/HardDie/event_tracker/internal/config"
+	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
 	"github.com/HardDie/event_tracker/internal/logger"
@@ -35,11 +36,13 @@ type Auth struct {
 
 	cfg   *config.Config
 	mutex sync.Mutex
+	db    *db.DB
 }
 
-func NewAuth(cfg *config.Config, user repository.IUser, password repository.IPassword,
+func NewAuth(db *db.DB, cfg *config.Config, user repository.IUser, password repository.IPassword,
 	session repository.ISession) *Auth {
 	return &Auth{
+		db:                 db,
 		cfg:                cfg,
 		userRepository:     user,
 		passwordRepository: password,
@@ -54,7 +57,7 @@ func (s *Auth) Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User
 	}()
 
 	// Check if username is not busy
-	user, err := s.userRepository.GetByName(ctx, req.Username)
+	user, err := s.userRepository.GetByName(s.db.DB, ctx, req.Username)
 	if err != nil {
 		return nil, fmt.Errorf("error while trying get user: %w", err)
 	}
@@ -69,13 +72,13 @@ func (s *Auth) Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User
 	}
 
 	// Create a user
-	user, err = s.userRepository.Create(ctx, req.Username, req.DisplayedName)
+	user, err = s.userRepository.Create(s.db.DB, ctx, req.Username, req.DisplayedName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a password
-	_, err = s.passwordRepository.Create(ctx, user.ID, hashPassword)
+	_, err = s.passwordRepository.Create(s.db.DB, ctx, user.ID, hashPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +87,7 @@ func (s *Auth) Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User
 }
 func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, error) {
 	// Check if such user exist
-	user, err := s.userRepository.GetByName(ctx, req.Username)
+	user, err := s.userRepository.GetByName(s.db.DB, ctx, req.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +96,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 	}
 
 	// Get password from DB
-	password, err := s.passwordRepository.GetByUserID(ctx, user.ID)
+	password, err := s.passwordRepository.GetByUserID(s.db.DB, ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +111,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 			return nil, fmt.Errorf("user was blocked after failed attempts")
 		}
 		// If the blocking time has expired, reset the counter of failed attempts
-		password, err = s.passwordRepository.ResetFailedAttempts(ctx, password.ID)
+		password, err = s.passwordRepository.ResetFailedAttempts(s.db.DB, ctx, password.ID)
 		if err != nil {
 			return nil, fmt.Errorf("error resetting the counter of failed attempts: %w", err)
 		}
@@ -117,7 +120,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 	// Check if password is correct
 	if !utils.HashBcryptCompare(req.Password, password.PasswordHash) {
 		// Increased number of failed attempts
-		_, err = s.passwordRepository.IncreaseFailedAttempts(ctx, password.ID)
+		_, err = s.passwordRepository.IncreaseFailedAttempts(s.db.DB, ctx, password.ID)
 		if err != nil {
 			logger.Error.Println("Error increasing failed attempts:", err.Error())
 		}
@@ -126,7 +129,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 
 	// Reset the failed attempts counter after the first successful attempt
 	if password.FailedAttempts > 0 {
-		_, err = s.passwordRepository.ResetFailedAttempts(ctx, password.ID)
+		_, err = s.passwordRepository.ResetFailedAttempts(s.db.DB, ctx, password.ID)
 		if err != nil {
 			logger.Error.Println("Error flushing failed attempts:", err.Error())
 		}
@@ -134,7 +137,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 	return user, nil
 }
 func (s *Auth) Logout(ctx context.Context, sessionID int32) error {
-	return s.sessionRepository.DeleteByID(ctx, sessionID)
+	return s.sessionRepository.DeleteByID(s.db.DB, ctx, sessionID)
 }
 func (s *Auth) GenerateCookie(ctx context.Context, userID int32) (*entity.Session, error) {
 	// Generate session key
@@ -144,7 +147,7 @@ func (s *Auth) GenerateCookie(ctx context.Context, userID int32) (*entity.Sessio
 	}
 
 	// Write session to DB
-	resp, err := s.sessionRepository.CreateOrUpdate(ctx, userID, utils.HashSha256(sessionKey))
+	resp, err := s.sessionRepository.CreateOrUpdate(s.db.DB, ctx, userID, utils.HashSha256(sessionKey))
 	if err != nil {
 		return nil, fmt.Errorf("write session to DB: %w", err)
 	}
@@ -155,7 +158,7 @@ func (s *Auth) GenerateCookie(ctx context.Context, userID int32) (*entity.Sessio
 func (s *Auth) ValidateCookie(ctx context.Context, sessionToken string) (*entity.Session, error) {
 	// Check if session exist
 	sessionHash := utils.HashSha256(sessionToken)
-	session, err := s.sessionRepository.GetByUserID(ctx, sessionHash)
+	session, err := s.sessionRepository.GetByUserID(s.db.DB, ctx, sessionHash)
 	if err != nil {
 		return nil, err
 	}
@@ -167,5 +170,5 @@ func (s *Auth) ValidateCookie(ctx context.Context, sessionToken string) (*entity
 	return session, nil
 }
 func (s *Auth) GetUserInfo(ctx context.Context, userID int32) (*entity.User, error) {
-	return s.userRepository.GetByID(ctx, userID, true)
+	return s.userRepository.GetByID(s.db.DB, ctx, userID, true)
 }

@@ -50,23 +50,23 @@ func Get() (*Application, error) {
 	v1Router := apiRouter.PathPrefix("/v1").Subrouter()
 
 	// Init repositories
-	userRepository := repository.NewUser(app.DB)
-	passwordRepository := repository.NewPassword(app.DB)
-	sessionRepository := repository.NewSession(app.DB)
-	eventRepository := repository.NewEvent(app.DB)
-	friendRepository := repository.NewFriend(app.DB)
+	userRepository := repository.NewUser()
+	passwordRepository := repository.NewPassword()
+	sessionRepository := repository.NewSession()
+	eventRepository := repository.NewEvent()
+	friendRepository := repository.NewFriend()
 
 	// Init services
 	systemService := service.NewSystem()
-	authService := service.NewAuth(app.Cfg, userRepository, passwordRepository, sessionRepository)
-	eventService := service.NewEvent(eventRepository)
-	friendService := service.NewFriend(friendRepository, userRepository)
+	authService := service.NewAuth(app.DB, app.Cfg, userRepository, passwordRepository, sessionRepository)
+	eventService := service.NewEvent(app.DB, eventRepository)
+	friendService := service.NewFriend(app.DB, friendRepository, userRepository)
 
 	// Init severs
 	systemServer := server.NewSystem(systemService)
 	authServer := server.NewAuth(app.Cfg, authService)
 	userServer := server.NewUser(
-		service.NewUser(userRepository, passwordRepository),
+		service.NewUser(app.DB, userRepository, passwordRepository),
 	)
 	eventServer := server.NewEvent(eventService)
 	friendServer := server.NewFriend(friendService)

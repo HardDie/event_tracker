@@ -7,30 +7,26 @@ import (
 
 	"github.com/dimonrus/gosql"
 
-	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
 )
 
 type IUser interface {
-	GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error)
-	GetByName(ctx context.Context, name string) (*entity.User, error)
-	Create(ctx context.Context, name, displayedName string) (*entity.User, error)
-	UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error)
-	UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error)
+	GetByID(tx IQuery, ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error)
+	GetByName(tx IQuery, ctx context.Context, name string) (*entity.User, error)
+	Create(tx IQuery, ctx context.Context, name, displayedName string) (*entity.User, error)
+	UpdateProfile(tx IQuery, ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error)
+	UpdateImage(tx IQuery, ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error)
 }
 
 type User struct {
-	db *db.DB
 }
 
-func NewUser(db *db.DB) *User {
-	return &User{
-		db: db,
-	}
+func NewUser() *User {
+	return &User{}
 }
 
-func (r *User) GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error) {
+func (r *User) GetByID(tx IQuery, ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error) {
 	user := &entity.User{
 		ID: id,
 	}
@@ -42,7 +38,7 @@ func (r *User) GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*en
 	}
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("deleted_at IS NULL")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	var err error
 	if showPrivateInfo {
@@ -60,7 +56,7 @@ func (r *User) GetByID(ctx context.Context, id int32, showPrivateInfo bool) (*en
 	return user, nil
 
 }
-func (r *User) GetByName(ctx context.Context, name string) (*entity.User, error) {
+func (r *User) GetByName(tx IQuery, ctx context.Context, name string) (*entity.User, error) {
 	user := &entity.User{
 		Username: name,
 	}
@@ -69,7 +65,7 @@ func (r *User) GetByName(ctx context.Context, name string) (*entity.User, error)
 	q.Columns().Add("id", "displayed_name", "email", "profile_image", "created_at", "updated_at", "deleted_at")
 	q.Where().AddExpression("username = ?", name)
 	q.Where().AddExpression("deleted_at IS NULL")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&user.ID, &user.DisplayedName, &user.Email, &user.ProfileImage, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	if err != nil {
@@ -80,7 +76,7 @@ func (r *User) GetByName(ctx context.Context, name string) (*entity.User, error)
 	}
 	return user, nil
 }
-func (r *User) Create(ctx context.Context, name, displayedName string) (*entity.User, error) {
+func (r *User) Create(tx IQuery, ctx context.Context, name, displayedName string) (*entity.User, error) {
 	user := &entity.User{
 		Username:      name,
 		DisplayedName: displayedName,
@@ -90,7 +86,7 @@ func (r *User) Create(ctx context.Context, name, displayedName string) (*entity.
 	q.Columns().Add("username", "displayed_name")
 	q.Columns().Arg(name, displayedName)
 	q.Returning().Add("id", "created_at", "updated_at")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -98,7 +94,7 @@ func (r *User) Create(ctx context.Context, name, displayedName string) (*entity.
 	}
 	return user, nil
 }
-func (r *User) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
+func (r *User) UpdateProfile(tx IQuery, ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
 	user := &entity.User{
 		ID:            req.ID,
 		DisplayedName: req.DisplayedName,
@@ -112,7 +108,7 @@ func (r *User) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*e
 	q.Where().AddExpression("id = ?", req.ID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("username", "profile_image", "created_at", "updated_at")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&user.Username, &user.ProfileImage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -120,7 +116,7 @@ func (r *User) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*e
 	}
 	return user, nil
 }
-func (r *User) UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
+func (r *User) UpdateImage(tx IQuery, ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
 	user := &entity.User{
 		ID:           req.ID,
 		ProfileImage: req.ProfileImage,
@@ -132,7 +128,7 @@ func (r *User) UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) 
 	q.Where().AddExpression("id = ?", req.ID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("username", "displayed_name", "email", "created_at", "updated_at")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&user.Username, &user.DisplayedName, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {

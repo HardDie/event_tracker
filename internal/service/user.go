@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
 	"github.com/HardDie/event_tracker/internal/repository"
@@ -21,22 +22,25 @@ type IUser interface {
 type User struct {
 	userRepository     repository.IUser
 	passwordRepository repository.IPassword
+
+	db *db.DB
 }
 
-func NewUser(repository repository.IUser, password repository.IPassword) *User {
+func NewUser(db *db.DB, repository repository.IUser, password repository.IPassword) *User {
 	return &User{
+		db:                 db,
 		userRepository:     repository,
 		passwordRepository: password,
 	}
 }
 
 func (s *User) Get(ctx context.Context, id, userID int32) (*entity.User, error) {
-	return s.userRepository.GetByID(ctx, id, id == userID)
+	return s.userRepository.GetByID(s.db.DB, ctx, id, id == userID)
 }
 
 func (s *User) Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID int32) error {
 	// Get password from DB
-	password, err := s.passwordRepository.GetByUserID(ctx, userID)
+	password, err := s.passwordRepository.GetByUserID(s.db.DB, ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -56,15 +60,15 @@ func (s *User) Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID 
 	}
 
 	// Update password
-	password, err = s.passwordRepository.Update(ctx, userID, hashPassword)
+	password, err = s.passwordRepository.Update(s.db.DB, ctx, userID, hashPassword)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 func (s *User) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
-	return s.userRepository.UpdateProfile(ctx, req)
+	return s.userRepository.UpdateProfile(s.db.DB, ctx, req)
 }
 func (s *User) UpdateImage(ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
-	return s.userRepository.UpdateImage(ctx, req)
+	return s.userRepository.UpdateImage(s.db.DB, ctx, req)
 }

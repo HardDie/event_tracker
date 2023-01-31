@@ -5,38 +5,35 @@ import (
 
 	"github.com/dimonrus/gosql"
 
-	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/entity"
 )
 
 type ISession interface {
-	CreateOrUpdate(ctx context.Context, userID int32, sessionHash string) (*entity.Session, error)
-	GetByUserID(ctx context.Context, sessionHash string) (*entity.Session, error)
-	DeleteByID(ctx context.Context, id int32) error
+	CreateOrUpdate(tx IQuery, ctx context.Context, userID int32, sessionHash string) (*entity.Session, error)
+	GetByUserID(tx IQuery, ctx context.Context, sessionHash string) (*entity.Session, error)
+	DeleteByID(tx IQuery, ctx context.Context, id int32) error
 }
 
 type Session struct {
-	db *db.DB
 }
 
-func NewSession(db *db.DB) *Session {
-	return &Session{
-		db: db,
-	}
+func NewSession() *Session {
+	return &Session{}
 }
 
-func (r *Session) CreateOrUpdate(ctx context.Context, userID int32, sessionHash string) (*entity.Session, error) {
+func (r *Session) CreateOrUpdate(tx IQuery, ctx context.Context, userID int32, sessionHash string) (*entity.Session, error) {
 	session := &entity.Session{
 		UserID:      userID,
 		SessionHash: sessionHash,
 	}
 
-	row := r.db.DB.QueryRowContext(ctx, `
-INSERT INTO sessions (user_id, session_hash)
-VALUES ($1, $2)
-ON CONFLICT (user_id) DO UPDATE
-SET session_hash = $2, updated_at = datetime('now'), deleted_at = NULL
-RETURNING id, created_at, updated_at`, userID, sessionHash)
+	q := gosql.NewInsert().Into("sessions")
+	q.Columns().Add("user_id", "session_hash")
+	q.Columns().Arg(userID, sessionHash)
+	q.Conflict().Object("user_id").Action("UPDATE").Set().
+		Add("session_hash = EXCLUDED.session_hash", "updated_at = datetime('now')", "deleted_at = NULL")
+	q.Returning().Add("id", "created_at", "updated_at")
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&session.ID, &session.CreatedAt, &session.UpdatedAt)
 	if err != nil {
@@ -44,7 +41,7 @@ RETURNING id, created_at, updated_at`, userID, sessionHash)
 	}
 	return session, nil
 }
-func (r *Session) GetByUserID(ctx context.Context, sessionHash string) (*entity.Session, error) {
+func (r *Session) GetByUserID(tx IQuery, ctx context.Context, sessionHash string) (*entity.Session, error) {
 	session := &entity.Session{
 		SessionHash: sessionHash,
 	}
@@ -53,7 +50,7 @@ func (r *Session) GetByUserID(ctx context.Context, sessionHash string) (*entity.
 	q.Columns().Add("id", "user_id", "created_at", "updated_at")
 	q.Where().AddExpression("session_hash = ?", sessionHash)
 	q.Where().AddExpression("deleted_at IS NULL")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&session.ID, &session.UserID, &session.CreatedAt, &session.UpdatedAt)
 	if err != nil {
@@ -61,13 +58,13 @@ func (r *Session) GetByUserID(ctx context.Context, sessionHash string) (*entity.
 	}
 	return session, nil
 }
-func (r *Session) DeleteByID(ctx context.Context, id int32) error {
+func (r *Session) DeleteByID(tx IQuery, ctx context.Context, id int32) error {
 	q := gosql.NewUpdate().Table("sessions")
 	q.Set().Add("deleted_at = datetime('now')")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("id")
-	row := r.db.DB.QueryRowContext(ctx, q.String(), q.GetArguments()...)
+	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
 	err := row.Scan(&id)
 	if err != nil {
