@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/HardDie/godb/v2"
 	_ "github.com/lib/pq"
@@ -36,20 +37,32 @@ func Get(cfg DBConfig) (*DB, error) {
 		SSLMode: "disable",
 	}
 
-	dbo, err := godb.DBO{
+	dbConfig := godb.DBO{
 		Options: godb.Options{
 			//Debug:  true,
 			Logger: logger.Debug,
 		},
 		Connection: &conf,
-	}.Init()
+	}
+
+	var err error
+	res := &DB{}
+
+	// Reconnecting to the database in case of failure
+	for i := 1; i < 8; i++ {
+		res.DB, err = dbConfig.Init()
+		if err == nil {
+			break
+		}
+		logger.Error.Println("error open connection to db:", err.Error())
+		time.Sleep(time.Duration(i*i) * time.Second)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("error open connection to db: %w", err)
 	}
 
-	return &DB{
-		DB: dbo,
-	}, nil
+	return res, nil
 }
 
 func (db *DB) BeginTx(ctx context.Context) (*godb.SqlTx, error) {
