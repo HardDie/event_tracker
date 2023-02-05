@@ -39,8 +39,14 @@ func (s *User) Get(ctx context.Context, id, userID int32) (*entity.User, error) 
 }
 
 func (s *User) Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID int32) error {
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { s.db.EndTx(tx, err) }()
+
 	// Get password from DB
-	password, err := s.passwordRepository.GetByUserID(s.db.DB, ctx, userID)
+	password, err := s.passwordRepository.GetByUserID(tx, ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -60,7 +66,7 @@ func (s *User) Password(ctx context.Context, req *dto.UpdatePasswordDTO, userID 
 	}
 
 	// Update password
-	password, err = s.passwordRepository.Update(s.db.DB, ctx, userID, hashPassword)
+	password, err = s.passwordRepository.Update(tx, ctx, userID, hashPassword)
 	if err != nil {
 		return err
 	}

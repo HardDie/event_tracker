@@ -20,3 +20,11 @@ services:
       - './caddy/config:/config'
     ports:
       - 443:443
+  db:
+    image: postgres:latest
+    volumes:
+      - './db:/var/lib/postgresql/data'
+    environment:
+      - POSTGRES_PASSWORD=event_tracker
+      - POSTGRES_USER=event_tracker
+      - POSTGRES_DB=db

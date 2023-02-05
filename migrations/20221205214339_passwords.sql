@@ -1,16 +1,15 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS passwords (
-    id              INTEGER   PRIMARY KEY AUTOINCREMENT,
-    user_id         INTEGER   NOT NULL REFERENCES users(id) UNIQUE,
+    id              SERIAL    PRIMARY KEY,
+    user_id         INT       NOT NULL UNIQUE REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     password_hash   TEXT      NOT NULL,
-    failed_attempts INTEGER   NOT NULL DEFAULT (0),
-    created_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
-    updated_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    failed_attempts INT       NOT NULL DEFAULT (0),
+    created_at      TIMESTAMP NOT NULL DEFAULT (now()),
+    updated_at      TIMESTAMP NOT NULL DEFAULT (now()),
     deleted_at      TIMESTAMP,
     blocked_at      TIMESTAMP
 );
-CREATE INDEX passwords_id_idx ON passwords (id);
 -- +goose StatementEnd
 
 -- +goose Down

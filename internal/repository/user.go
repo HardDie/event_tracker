@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/HardDie/godb/v2"
 	"github.com/dimonrus/gosql"
 
 	"github.com/HardDie/event_tracker/internal/dto"
@@ -12,11 +13,11 @@ import (
 )
 
 type IUser interface {
-	GetByID(tx IQuery, ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error)
-	GetByName(tx IQuery, ctx context.Context, name string) (*entity.User, error)
-	Create(tx IQuery, ctx context.Context, name, displayedName string) (*entity.User, error)
-	UpdateProfile(tx IQuery, ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error)
-	UpdateImage(tx IQuery, ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error)
+	GetByID(tx godb.Queryer, ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error)
+	GetByName(tx godb.Queryer, ctx context.Context, name string) (*entity.User, error)
+	Create(tx godb.Queryer, ctx context.Context, name, displayedName string) (*entity.User, error)
+	UpdateProfile(tx godb.Queryer, ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error)
+	UpdateImage(tx godb.Queryer, ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error)
 }
 
 type User struct {
@@ -26,7 +27,7 @@ func NewUser() *User {
 	return &User{}
 }
 
-func (r *User) GetByID(tx IQuery, ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error) {
+func (r *User) GetByID(tx godb.Queryer, ctx context.Context, id int32, showPrivateInfo bool) (*entity.User, error) {
 	user := &entity.User{
 		ID: id,
 	}
@@ -56,7 +57,7 @@ func (r *User) GetByID(tx IQuery, ctx context.Context, id int32, showPrivateInfo
 	return user, nil
 
 }
-func (r *User) GetByName(tx IQuery, ctx context.Context, name string) (*entity.User, error) {
+func (r *User) GetByName(tx godb.Queryer, ctx context.Context, name string) (*entity.User, error) {
 	user := &entity.User{
 		Username: name,
 	}
@@ -76,7 +77,7 @@ func (r *User) GetByName(tx IQuery, ctx context.Context, name string) (*entity.U
 	}
 	return user, nil
 }
-func (r *User) Create(tx IQuery, ctx context.Context, name, displayedName string) (*entity.User, error) {
+func (r *User) Create(tx godb.Queryer, ctx context.Context, name, displayedName string) (*entity.User, error) {
 	user := &entity.User{
 		Username:      name,
 		DisplayedName: displayedName,
@@ -94,7 +95,7 @@ func (r *User) Create(tx IQuery, ctx context.Context, name, displayedName string
 	}
 	return user, nil
 }
-func (r *User) UpdateProfile(tx IQuery, ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
+func (r *User) UpdateProfile(tx godb.Queryer, ctx context.Context, req *dto.UpdateProfileDTO) (*entity.User, error) {
 	user := &entity.User{
 		ID:            req.ID,
 		DisplayedName: req.DisplayedName,
@@ -104,7 +105,7 @@ func (r *User) UpdateProfile(tx IQuery, ctx context.Context, req *dto.UpdateProf
 	q := gosql.NewUpdate().Table("users")
 	q.Set().Append("displayed_name = ?", req.DisplayedName)
 	q.Set().Append("email = ?", req.Email)
-	q.Set().Append("updated_at = datetime('now')")
+	q.Set().Append("updated_at = now()")
 	q.Where().AddExpression("id = ?", req.ID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("username", "profile_image", "created_at", "updated_at")
@@ -116,7 +117,7 @@ func (r *User) UpdateProfile(tx IQuery, ctx context.Context, req *dto.UpdateProf
 	}
 	return user, nil
 }
-func (r *User) UpdateImage(tx IQuery, ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
+func (r *User) UpdateImage(tx godb.Queryer, ctx context.Context, req *dto.UpdateProfileImageDTO) (*entity.User, error) {
 	user := &entity.User{
 		ID:           req.ID,
 		ProfileImage: req.ProfileImage,
@@ -124,7 +125,7 @@ func (r *User) UpdateImage(tx IQuery, ctx context.Context, req *dto.UpdateProfil
 
 	q := gosql.NewUpdate().Table("users")
 	q.Set().Append("profile_image = ?", req.ProfileImage)
-	q.Set().Append("updated_at = datetime('now')")
+	q.Set().Append("updated_at = now()")
 	q.Where().AddExpression("id = ?", req.ID)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("username", "displayed_name", "email", "created_at", "updated_at")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/HardDie/event_tracker/internal/config"
@@ -34,9 +33,8 @@ type Auth struct {
 	passwordRepository repository.IPassword
 	sessionRepository  repository.ISession
 
-	cfg   *config.Config
-	mutex sync.Mutex
-	db    *db.DB
+	cfg *config.Config
+	db  *db.DB
 }
 
 func NewAuth(db *db.DB, cfg *config.Config, user repository.IUser, password repository.IPassword,
@@ -51,13 +49,14 @@ func NewAuth(db *db.DB, cfg *config.Config, user repository.IUser, password repo
 }
 
 func (s *Auth) Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User, error) {
-	s.mutex.Lock()
-	defer func() {
-		s.mutex.Unlock()
-	}()
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { s.db.EndTx(tx, err) }()
 
 	// Check if username is not busy
-	user, err := s.userRepository.GetByName(s.db.DB, ctx, req.Username)
+	user, err := s.userRepository.GetByName(tx, ctx, req.Username)
 	if err != nil {
 		return nil, fmt.Errorf("error while trying get user: %w", err)
 	}
@@ -72,13 +71,13 @@ func (s *Auth) Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User
 	}
 
 	// Create a user
-	user, err = s.userRepository.Create(s.db.DB, ctx, req.Username, req.DisplayedName)
+	user, err = s.userRepository.Create(tx, ctx, req.Username, req.DisplayedName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a password
-	_, err = s.passwordRepository.Create(s.db.DB, ctx, user.ID, hashPassword)
+	_, err = s.passwordRepository.Create(tx, ctx, user.ID, hashPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +85,14 @@ func (s *Auth) Register(ctx context.Context, req *dto.RegisterDTO) (*entity.User
 	return user, nil
 }
 func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, error) {
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { s.db.EndTx(tx, err) }()
+
 	// Check if such user exist
-	user, err := s.userRepository.GetByName(s.db.DB, ctx, req.Username)
+	user, err := s.userRepository.GetByName(tx, ctx, req.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +101,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 	}
 
 	// Get password from DB
-	password, err := s.passwordRepository.GetByUserID(s.db.DB, ctx, user.ID)
+	password, err := s.passwordRepository.GetByUserID(tx, ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +116,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 			return nil, fmt.Errorf("user was blocked after failed attempts")
 		}
 		// If the blocking time has expired, reset the counter of failed attempts
-		password, err = s.passwordRepository.ResetFailedAttempts(s.db.DB, ctx, password.ID)
+		password, err = s.passwordRepository.ResetFailedAttempts(tx, ctx, password.ID)
 		if err != nil {
 			return nil, fmt.Errorf("error resetting the counter of failed attempts: %w", err)
 		}
@@ -120,7 +125,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 	// Check if password is correct
 	if !utils.HashBcryptCompare(req.Password, password.PasswordHash) {
 		// Increased number of failed attempts
-		_, err = s.passwordRepository.IncreaseFailedAttempts(s.db.DB, ctx, password.ID)
+		_, err = s.passwordRepository.IncreaseFailedAttempts(tx, ctx, password.ID)
 		if err != nil {
 			logger.Error.Println("Error increasing failed attempts:", err.Error())
 		}
@@ -129,7 +134,7 @@ func (s *Auth) Login(ctx context.Context, req *dto.LoginDTO) (*entity.User, erro
 
 	// Reset the failed attempts counter after the first successful attempt
 	if password.FailedAttempts > 0 {
-		_, err = s.passwordRepository.ResetFailedAttempts(s.db.DB, ctx, password.ID)
+		_, err = s.passwordRepository.ResetFailedAttempts(tx, ctx, password.ID)
 		if err != nil {
 			logger.Error.Println("Error flushing failed attempts:", err.Error())
 		}

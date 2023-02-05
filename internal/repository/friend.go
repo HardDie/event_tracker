@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/HardDie/godb/v2"
 	"github.com/dimonrus/gosql"
 
 	"github.com/HardDie/event_tracker/internal/dto"
@@ -13,15 +14,15 @@ import (
 )
 
 type IFriend interface {
-	CreateInvite(tx IQuery, ctx context.Context, userID, id int32) (*entity.FriendInvite, error)
-	ListPendingInvitations(tx IQuery, ctx context.Context, userID int32) ([]*dto.InviteListResponseDTO, int32, error)
-	DeleteInvite(tx IQuery, ctx context.Context, userID, id int32) error
-	GetInviteByUserID(tx IQuery, ctx context.Context, userID, withUserID int32) (*entity.FriendInvite, error)
-	GetInviteByID(tx IQuery, ctx context.Context, userID, id int32) (*entity.FriendInvite, error)
+	CreateInvite(tx godb.Queryer, ctx context.Context, userID, id int32) (*entity.FriendInvite, error)
+	ListPendingInvitations(tx godb.Queryer, ctx context.Context, userID int32) ([]*dto.InviteListResponseDTO, int32, error)
+	DeleteInvite(tx godb.Queryer, ctx context.Context, userID, id int32) error
+	GetInviteByUserID(tx godb.Queryer, ctx context.Context, userID, withUserID int32) (*entity.FriendInvite, error)
+	GetInviteByID(tx godb.Queryer, ctx context.Context, userID, id int32) (*entity.FriendInvite, error)
 
-	GetFriendByUserID(tx IQuery, ctx context.Context, userID, withUserID int32) (*entity.Friend, error)
-	CreateFriendshipLink(tx IQuery, ctx context.Context, userID, withUserID int32) ([]*entity.Friend, error)
-	ListOfFriends(tx IQuery, ctx context.Context, userID int32) ([]*entity.User, int32, error)
+	GetFriendByUserID(tx godb.Queryer, ctx context.Context, userID, withUserID int32) (*entity.Friend, error)
+	CreateFriendshipLink(tx godb.Queryer, ctx context.Context, userID, withUserID int32) ([]*entity.Friend, error)
+	ListOfFriends(tx godb.Queryer, ctx context.Context, userID int32) ([]*entity.User, int32, error)
 }
 
 type Friend struct {
@@ -31,7 +32,7 @@ func NewFriend() *Friend {
 	return &Friend{}
 }
 
-func (r *Friend) CreateInvite(tx IQuery, ctx context.Context, userID, withUserID int32) (*entity.FriendInvite, error) {
+func (r *Friend) CreateInvite(tx godb.Queryer, ctx context.Context, userID, withUserID int32) (*entity.FriendInvite, error) {
 	invite := &entity.FriendInvite{
 		UserID:     userID,
 		WithUserID: withUserID,
@@ -49,7 +50,7 @@ func (r *Friend) CreateInvite(tx IQuery, ctx context.Context, userID, withUserID
 	}
 	return invite, nil
 }
-func (r *Friend) ListPendingInvitations(tx IQuery, ctx context.Context, userID int32) ([]*dto.InviteListResponseDTO, int32, error) {
+func (r *Friend) ListPendingInvitations(tx godb.Queryer, ctx context.Context, userID int32) ([]*dto.InviteListResponseDTO, int32, error) {
 	var res []*dto.InviteListResponseDTO
 
 	q := gosql.NewSelect().From("friend_invites fi")
@@ -84,9 +85,9 @@ func (r *Friend) ListPendingInvitations(tx IQuery, ctx context.Context, userID i
 
 	return res, int32(len(res)), nil
 }
-func (r *Friend) DeleteInvite(tx IQuery, ctx context.Context, userID, inviteID int32) error {
+func (r *Friend) DeleteInvite(tx godb.Queryer, ctx context.Context, userID, inviteID int32) error {
 	q := gosql.NewUpdate().Table("friend_invites")
-	q.Set().Add("deleted_at = datetime('now')")
+	q.Set().Add("deleted_at = now()")
 	q.Where().AddExpression("id = ?", inviteID)
 	q.Where().AddExpression("with_user_id = ? OR user_id = ?", userID, userID)
 	q.Where().AddExpression("deleted_at IS NULL")
@@ -100,7 +101,7 @@ func (r *Friend) DeleteInvite(tx IQuery, ctx context.Context, userID, inviteID i
 	}
 	return nil
 }
-func (r *Friend) GetInviteByUserID(tx IQuery, ctx context.Context, userID, withUserID int32) (*entity.FriendInvite, error) {
+func (r *Friend) GetInviteByUserID(tx godb.Queryer, ctx context.Context, userID, withUserID int32) (*entity.FriendInvite, error) {
 	invite := &entity.FriendInvite{
 		UserID:     userID,
 		WithUserID: withUserID,
@@ -122,7 +123,7 @@ func (r *Friend) GetInviteByUserID(tx IQuery, ctx context.Context, userID, withU
 	}
 	return invite, nil
 }
-func (r *Friend) GetInviteByID(tx IQuery, ctx context.Context, userID, id int32) (*entity.FriendInvite, error) {
+func (r *Friend) GetInviteByID(tx godb.Queryer, ctx context.Context, userID, id int32) (*entity.FriendInvite, error) {
 	invite := &entity.FriendInvite{
 		ID:         id,
 		WithUserID: userID,
@@ -137,12 +138,15 @@ func (r *Friend) GetInviteByID(tx IQuery, ctx context.Context, userID, id int32)
 
 	err := row.Scan(&invite.UserID, &invite.CreatedAt, &invite.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return invite, nil
 }
 
-func (r *Friend) GetFriendByUserID(tx IQuery, ctx context.Context, userID, withUserID int32) (*entity.Friend, error) {
+func (r *Friend) GetFriendByUserID(tx godb.Queryer, ctx context.Context, userID, withUserID int32) (*entity.Friend, error) {
 	invite := &entity.Friend{
 		UserID:     userID,
 		WithUserID: withUserID,
@@ -164,7 +168,7 @@ func (r *Friend) GetFriendByUserID(tx IQuery, ctx context.Context, userID, withU
 	}
 	return invite, nil
 }
-func (r *Friend) CreateFriendshipLink(tx IQuery, ctx context.Context, userID, withUserID int32) ([]*entity.Friend, error) {
+func (r *Friend) CreateFriendshipLink(tx godb.Queryer, ctx context.Context, userID, withUserID int32) ([]*entity.Friend, error) {
 	var res []*entity.Friend
 
 	q := gosql.NewInsert().Into("friends")
@@ -191,7 +195,7 @@ func (r *Friend) CreateFriendshipLink(tx IQuery, ctx context.Context, userID, wi
 
 	return res, nil
 }
-func (r *Friend) ListOfFriends(tx IQuery, ctx context.Context, userID int32) ([]*entity.User, int32, error) {
+func (r *Friend) ListOfFriends(tx godb.Queryer, ctx context.Context, userID int32) ([]*entity.User, int32, error) {
 	var res []*entity.User
 
 	q := gosql.NewSelect().From("friends f")

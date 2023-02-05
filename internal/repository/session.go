@@ -3,15 +3,16 @@ package repository
 import (
 	"context"
 
+	"github.com/HardDie/godb/v2"
 	"github.com/dimonrus/gosql"
 
 	"github.com/HardDie/event_tracker/internal/entity"
 )
 
 type ISession interface {
-	CreateOrUpdate(tx IQuery, ctx context.Context, userID int32, sessionHash string) (*entity.Session, error)
-	GetByUserID(tx IQuery, ctx context.Context, sessionHash string) (*entity.Session, error)
-	DeleteByID(tx IQuery, ctx context.Context, id int32) error
+	CreateOrUpdate(tx godb.Queryer, ctx context.Context, userID int32, sessionHash string) (*entity.Session, error)
+	GetByUserID(tx godb.Queryer, ctx context.Context, sessionHash string) (*entity.Session, error)
+	DeleteByID(tx godb.Queryer, ctx context.Context, id int32) error
 }
 
 type Session struct {
@@ -21,7 +22,7 @@ func NewSession() *Session {
 	return &Session{}
 }
 
-func (r *Session) CreateOrUpdate(tx IQuery, ctx context.Context, userID int32, sessionHash string) (*entity.Session, error) {
+func (r *Session) CreateOrUpdate(tx godb.Queryer, ctx context.Context, userID int32, sessionHash string) (*entity.Session, error) {
 	session := &entity.Session{
 		UserID:      userID,
 		SessionHash: sessionHash,
@@ -31,7 +32,7 @@ func (r *Session) CreateOrUpdate(tx IQuery, ctx context.Context, userID int32, s
 	q.Columns().Add("user_id", "session_hash")
 	q.Columns().Arg(userID, sessionHash)
 	q.Conflict().Object("user_id").Action("UPDATE").Set().
-		Add("session_hash = EXCLUDED.session_hash", "updated_at = datetime('now')", "deleted_at = NULL")
+		Add("session_hash = EXCLUDED.session_hash", "updated_at = now()", "deleted_at = NULL")
 	q.Returning().Add("id", "created_at", "updated_at")
 	row := tx.QueryRowContext(ctx, q.String(), q.GetArguments()...)
 
@@ -41,7 +42,7 @@ func (r *Session) CreateOrUpdate(tx IQuery, ctx context.Context, userID int32, s
 	}
 	return session, nil
 }
-func (r *Session) GetByUserID(tx IQuery, ctx context.Context, sessionHash string) (*entity.Session, error) {
+func (r *Session) GetByUserID(tx godb.Queryer, ctx context.Context, sessionHash string) (*entity.Session, error) {
 	session := &entity.Session{
 		SessionHash: sessionHash,
 	}
@@ -58,9 +59,9 @@ func (r *Session) GetByUserID(tx IQuery, ctx context.Context, sessionHash string
 	}
 	return session, nil
 }
-func (r *Session) DeleteByID(tx IQuery, ctx context.Context, id int32) error {
+func (r *Session) DeleteByID(tx godb.Queryer, ctx context.Context, id int32) error {
 	q := gosql.NewUpdate().Table("sessions")
-	q.Set().Add("deleted_at = datetime('now')")
+	q.Set().Add("deleted_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("id")

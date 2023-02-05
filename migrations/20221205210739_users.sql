@@ -1,16 +1,15 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS users (
-    id              INTEGER   PRIMARY KEY AUTOINCREMENT,
+    id              SERIAL    PRIMARY KEY,
     username        TEXT      NOT NULL UNIQUE,
     displayed_name  TEXT,
     email           TEXT,
     profile_image   TEXT,
-    created_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
-    updated_at      TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    created_at      TIMESTAMP NOT NULL DEFAULT (now()),
+    updated_at      TIMESTAMP NOT NULL DEFAULT (now()),
     deleted_at      TIMESTAMP
 );
-CREATE INDEX users_id_idx ON users (id);
 -- +goose StatementEnd
 
 -- +goose Down

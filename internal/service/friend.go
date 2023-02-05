@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/dto"
@@ -34,8 +35,14 @@ func NewFriend(db *db.DB, repository repository.IFriend, user repository.IUser) 
 }
 
 func (s *Friend) InviteFriend(ctx context.Context, req *dto.InviteFriendDTO) error {
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { s.db.EndTx(tx, err) }()
+
 	// Check if such a user exists
-	user, err := s.userRepository.GetByName(s.db.DB, ctx, req.Username)
+	user, err := s.userRepository.GetByName(tx, ctx, req.Username)
 	if err != nil {
 		return err
 	}
@@ -49,7 +56,7 @@ func (s *Friend) InviteFriend(ctx context.Context, req *dto.InviteFriendDTO) err
 	}
 
 	// Check if the user is already a friend
-	friend, err := s.repository.GetFriendByUserID(s.db.DB, ctx, req.ID, user.ID)
+	friend, err := s.repository.GetFriendByUserID(tx, ctx, req.ID, user.ID)
 	if err != nil {
 		return err
 	}
@@ -58,7 +65,7 @@ func (s *Friend) InviteFriend(ctx context.Context, req *dto.InviteFriendDTO) err
 	}
 
 	// Check if such an invitation already exists
-	inv, err := s.repository.GetInviteByUserID(s.db.DB, ctx, req.ID, user.ID)
+	inv, err := s.repository.GetInviteByUserID(tx, ctx, req.ID, user.ID)
 	if err != nil {
 		return err
 	}
@@ -67,7 +74,7 @@ func (s *Friend) InviteFriend(ctx context.Context, req *dto.InviteFriendDTO) err
 	}
 
 	// Create an invitation for a friend
-	_, err = s.repository.CreateInvite(s.db.DB, ctx, req.ID, user.ID)
+	_, err = s.repository.CreateInvite(tx, ctx, req.ID, user.ID)
 	if err != nil {
 		return err
 	}
@@ -77,10 +84,19 @@ func (s *Friend) InviteListPending(ctx context.Context, userID int32) ([]*dto.In
 	return s.repository.ListPendingInvitations(s.db.DB, ctx, userID)
 }
 func (s *Friend) AcceptFriendship(ctx context.Context, userID, inviteID int32) error {
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { s.db.EndTx(tx, err) }()
+
 	// Get information about the invitation, check if there is such an invitation
-	invite, err := s.repository.GetInviteByID(s.db.DB, ctx, userID, inviteID)
+	invite, err := s.repository.GetInviteByID(tx, ctx, userID, inviteID)
 	if err != nil {
 		return err
+	}
+	if invite == nil {
+		return errors.New("there is no such invitation")
 	}
 
 	// Check if the invitation is associated with the current user
@@ -89,23 +105,45 @@ func (s *Friend) AcceptFriendship(ctx context.Context, userID, inviteID int32) e
 	}
 
 	// Delete invitation
-	err = s.repository.DeleteInvite(s.db.DB, ctx, userID, invite.ID)
+	err = s.repository.DeleteInvite(tx, ctx, userID, invite.ID)
 	if err != nil {
 		return err
 	}
 
+	// Check if there exist is an outgoing friendship invitation
+	outgoingInvite, err := s.repository.GetInviteByUserID(tx, ctx, userID, invite.WithUserID)
+	if err != nil {
+		return err
+	}
+	if outgoingInvite != nil {
+		// If an invitation exists, delete it
+		err = s.repository.DeleteInvite(tx, ctx, userID, outgoingInvite.ID)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Create a friendship
-	_, err = s.repository.CreateFriendshipLink(s.db.DB, ctx, userID, invite.UserID)
+	_, err = s.repository.CreateFriendshipLink(tx, ctx, userID, invite.UserID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 func (s *Friend) RejectFriendship(ctx context.Context, userID, inviteID int32) error {
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { s.db.EndTx(tx, err) }()
+
 	// Get information about the invitation, check if there is such an invitation
-	invite, err := s.repository.GetInviteByID(s.db.DB, ctx, userID, inviteID)
+	invite, err := s.repository.GetInviteByID(tx, ctx, userID, inviteID)
 	if err != nil {
 		return err
+	}
+	if invite == nil {
+		return errors.New("there is no such invitation")
 	}
 
 	// Check if the invitation is associated with the current user
@@ -114,7 +152,7 @@ func (s *Friend) RejectFriendship(ctx context.Context, userID, inviteID int32) e
 	}
 
 	// Delete invitation
-	err = s.repository.DeleteInvite(s.db.DB, ctx, userID, invite.ID)
+	err = s.repository.DeleteInvite(tx, ctx, userID, invite.ID)
 	if err != nil {
 		return err
 	}

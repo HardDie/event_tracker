@@ -12,7 +12,6 @@ import (
 
 	"github.com/HardDie/event_tracker/internal/config"
 	"github.com/HardDie/event_tracker/internal/db"
-	"github.com/HardDie/event_tracker/internal/logger"
 	"github.com/HardDie/event_tracker/internal/middleware"
 	"github.com/HardDie/event_tracker/internal/migration"
 	"github.com/HardDie/event_tracker/internal/repository"
@@ -33,7 +32,7 @@ func Get() (*Application, error) {
 	}
 
 	// Init DB
-	newDB, err := db.Get(app.Cfg.DBPath)
+	newDB, err := db.Get(app.Cfg.DB)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +108,7 @@ func (app *Application) Run() error {
 }
 
 func (app *Application) Stop() {
-	err := app.DB.DB.Close()
-	if err != nil {
-		logger.Error.Println("error closing DB connection:", err.Error())
-	}
+	app.DB.DB.Close()
 	app.DB = nil
 	log.Println("Done")
 }

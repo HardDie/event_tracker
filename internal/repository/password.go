@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/HardDie/godb/v2"
 	"github.com/dimonrus/gosql"
 
 	"github.com/HardDie/event_tracker/internal/entity"
 )
 
 type IPassword interface {
-	Create(tx IQuery, ctx context.Context, userID int32, passwordHash string) (*entity.Password, error)
-	GetByUserID(tx IQuery, ctx context.Context, userID int32) (*entity.Password, error)
-	Update(tx IQuery, ctx context.Context, id int32, passwordHash string) (*entity.Password, error)
-	IncreaseFailedAttempts(tx IQuery, ctx context.Context, id int32) (*entity.Password, error)
-	ResetFailedAttempts(tx IQuery, ctx context.Context, id int32) (*entity.Password, error)
+	Create(tx godb.Queryer, ctx context.Context, userID int32, passwordHash string) (*entity.Password, error)
+	GetByUserID(tx godb.Queryer, ctx context.Context, userID int32) (*entity.Password, error)
+	Update(tx godb.Queryer, ctx context.Context, id int32, passwordHash string) (*entity.Password, error)
+	IncreaseFailedAttempts(tx godb.Queryer, ctx context.Context, id int32) (*entity.Password, error)
+	ResetFailedAttempts(tx godb.Queryer, ctx context.Context, id int32) (*entity.Password, error)
 }
 
 type Password struct {
@@ -25,7 +26,7 @@ func NewPassword() *Password {
 	return &Password{}
 }
 
-func (r *Password) Create(tx IQuery, ctx context.Context, userID int32, passwordHash string) (*entity.Password, error) {
+func (r *Password) Create(tx godb.Queryer, ctx context.Context, userID int32, passwordHash string) (*entity.Password, error) {
 	password := &entity.Password{
 		UserID:       userID,
 		PasswordHash: passwordHash,
@@ -43,7 +44,7 @@ func (r *Password) Create(tx IQuery, ctx context.Context, userID int32, password
 	}
 	return password, nil
 }
-func (r *Password) GetByUserID(tx IQuery, ctx context.Context, userID int32) (*entity.Password, error) {
+func (r *Password) GetByUserID(tx godb.Queryer, ctx context.Context, userID int32) (*entity.Password, error) {
 	password := &entity.Password{
 		UserID: userID,
 	}
@@ -63,7 +64,7 @@ func (r *Password) GetByUserID(tx IQuery, ctx context.Context, userID int32) (*e
 	}
 	return password, nil
 }
-func (r *Password) Update(tx IQuery, ctx context.Context, id int32, passwordHash string) (*entity.Password, error) {
+func (r *Password) Update(tx godb.Queryer, ctx context.Context, id int32, passwordHash string) (*entity.Password, error) {
 	password := &entity.Password{
 		ID:           id,
 		PasswordHash: passwordHash,
@@ -71,7 +72,7 @@ func (r *Password) Update(tx IQuery, ctx context.Context, id int32, passwordHash
 
 	q := gosql.NewUpdate().Table("passwords")
 	q.Set().Append("password_hash = ?", passwordHash)
-	q.Set().Append("updated_at = datetime('now')")
+	q.Set().Append("updated_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("user_id", "failed_attempts", "created_at", "updated_at")
@@ -83,14 +84,14 @@ func (r *Password) Update(tx IQuery, ctx context.Context, id int32, passwordHash
 	}
 	return password, nil
 }
-func (r *Password) IncreaseFailedAttempts(tx IQuery, ctx context.Context, id int32) (*entity.Password, error) {
+func (r *Password) IncreaseFailedAttempts(tx godb.Queryer, ctx context.Context, id int32) (*entity.Password, error) {
 	password := &entity.Password{
 		ID: id,
 	}
 
 	q := gosql.NewUpdate().Table("passwords")
 	q.Set().Add("failed_attempts = failed_attempts + 1")
-	q.Set().Append("updated_at = datetime('now')")
+	q.Set().Append("updated_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("user_id", "password_hash", "failed_attempts", "created_at", "updated_at")
@@ -102,14 +103,14 @@ func (r *Password) IncreaseFailedAttempts(tx IQuery, ctx context.Context, id int
 	}
 	return password, nil
 }
-func (r *Password) ResetFailedAttempts(tx IQuery, ctx context.Context, id int32) (*entity.Password, error) {
+func (r *Password) ResetFailedAttempts(tx godb.Queryer, ctx context.Context, id int32) (*entity.Password, error) {
 	password := &entity.Password{
 		ID: id,
 	}
 
 	q := gosql.NewUpdate().Table("passwords")
 	q.Set().Add("failed_attempts = 0")
-	q.Set().Append("updated_at = datetime('now')")
+	q.Set().Append("updated_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("deleted_at IS NULL")
 	q.Returning().Add("user_id", "password_hash", "failed_attempts", "created_at", "updated_at")

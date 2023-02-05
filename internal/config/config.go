@@ -6,11 +6,12 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/HardDie/event_tracker/internal/db"
 	"github.com/HardDie/event_tracker/internal/logger"
 )
 
 type Config struct {
-	DBPath         string
+	DB             db.DBConfig
 	Port           string
 	PwdMaxAttempts int
 	PwdBlockTime   int
@@ -25,7 +26,13 @@ func Get() *Config {
 	}
 
 	return &Config{
-		DBPath:         getEnv("DB_PATH", "event.db"),
+		DB: db.DBConfig{
+			Host:     getEnv("DB_HOST", "db"),
+			Port:     getEnvAsInt("DB_PORT", 5432),
+			User:     getEnv("DB_USER", "event_tracker"),
+			Password: getEnv("DB_PWD", "event_tracker"),
+			Database: getEnv("DB_DB", "db"),
+		},
 		Port:           getEnv("PORT", ":8080"),
 		PwdMaxAttempts: getEnvAsInt("PWD_MAX_ATTEMPTS", 5),
 		PwdBlockTime:   getEnvAsInt("PWD_BLOCK_TIME", 24),

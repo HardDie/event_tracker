@@ -1,15 +1,14 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS events (
-    id         INTEGER   PRIMARY KEY AUTOINCREMENT,
-    user_id    INTEGER   NOT NULL REFERENCES users(id),
-    type_id    INTEGER   NOT NULL REFERENCES event_types(id),
+    id         SERIAL    PRIMARY KEY,
+    user_id    INT       NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    type_id    INT       NOT NULL REFERENCES event_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     date       TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
-    updated_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    created_at TIMESTAMP NOT NULL DEFAULT (now()),
+    updated_at TIMESTAMP NOT NULL DEFAULT (now()),
     deleted_at TIMESTAMP
 );
-CREATE INDEX events_id_idx ON events (id);
 CREATE INDEX events_user_id_date_idx ON events (user_id, date);
 -- +goose StatementEnd
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/HardDie/godb/v2"
 	"github.com/dimonrus/gosql"
 
 	"github.com/HardDie/event_tracker/internal/dto"
@@ -14,16 +15,16 @@ import (
 )
 
 type IEvent interface {
-	CreateType(tx IQuery, ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error)
-	DeleteType(tx IQuery, ctx context.Context, userID, id int32) error
-	ListType(tx IQuery, ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error)
-	EditType(tx IQuery, ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error)
+	CreateType(tx godb.Queryer, ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error)
+	DeleteType(tx godb.Queryer, ctx context.Context, userID, id int32) error
+	ListType(tx godb.Queryer, ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error)
+	EditType(tx godb.Queryer, ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error)
 
-	CreateEvent(tx IQuery, ctx context.Context, userID, eventTypeID int32, date time.Time) (*entity.Event, error)
-	DeleteEvent(tx IQuery, ctx context.Context, userID, id int32) error
-	ListEvent(tx IQuery, ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error)
+	CreateEvent(tx godb.Queryer, ctx context.Context, userID, eventTypeID int32, date time.Time) (*entity.Event, error)
+	DeleteEvent(tx godb.Queryer, ctx context.Context, userID, id int32) error
+	ListEvent(tx godb.Queryer, ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error)
 
-	FriendsFeed(tx IQuery, ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error)
+	FriendsFeed(tx godb.Queryer, ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error)
 }
 type Event struct {
 }
@@ -32,7 +33,7 @@ func NewEvent() *Event {
 	return &Event{}
 }
 
-func (r *Event) CreateType(tx IQuery, ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error) {
+func (r *Event) CreateType(tx godb.Queryer, ctx context.Context, userID int32, name string, isVisible bool) (*entity.EventType, error) {
 	eventType := &entity.EventType{
 		EventType: name,
 		IsVisible: isVisible,
@@ -54,9 +55,9 @@ func (r *Event) CreateType(tx IQuery, ctx context.Context, userID int32, name st
 	}
 	return eventType, nil
 }
-func (r *Event) DeleteType(tx IQuery, ctx context.Context, userID, id int32) error {
+func (r *Event) DeleteType(tx godb.Queryer, ctx context.Context, userID, id int32) error {
 	q := gosql.NewUpdate().Table("event_types")
-	q.Set().Add("deleted_at = datetime('now')")
+	q.Set().Add("deleted_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("user_id = ?", userID)
 	q.Where().AddExpression("deleted_at IS NULL")
@@ -73,7 +74,7 @@ func (r *Event) DeleteType(tx IQuery, ctx context.Context, userID, id int32) err
 	}
 	return nil
 }
-func (r *Event) ListType(tx IQuery, ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error) {
+func (r *Event) ListType(tx godb.Queryer, ctx context.Context, userID int32, onlyVisible bool) ([]*entity.EventType, int32, error) {
 	var res []*entity.EventType
 
 	q := gosql.NewSelect().From("event_types")
@@ -115,7 +116,7 @@ func (r *Event) ListType(tx IQuery, ctx context.Context, userID int32, onlyVisib
 
 	return res, int32(len(res)), nil
 }
-func (r *Event) EditType(tx IQuery, ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error) {
+func (r *Event) EditType(tx godb.Queryer, ctx context.Context, userID, id int32, name string, isVisible bool) (*entity.EventType, error) {
 	eventType := &entity.EventType{
 		ID:        id,
 		UserID:    userID,
@@ -126,7 +127,7 @@ func (r *Event) EditType(tx IQuery, ctx context.Context, userID, id int32, name 
 	q := gosql.NewUpdate().Table("event_types")
 	q.Set().Append("event_type = ?", name)
 	q.Set().Append("is_visible = ?", isVisible)
-	q.Set().Append("updated_at = datetime('now')")
+	q.Set().Append("updated_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("user_id = ?", userID)
 	q.Where().AddExpression("deleted_at IS NULL")
@@ -144,7 +145,7 @@ func (r *Event) EditType(tx IQuery, ctx context.Context, userID, id int32, name 
 	return eventType, nil
 }
 
-func (r *Event) CreateEvent(tx IQuery, ctx context.Context, userID, typeID int32, date time.Time) (*entity.Event, error) {
+func (r *Event) CreateEvent(tx godb.Queryer, ctx context.Context, userID, typeID int32, date time.Time) (*entity.Event, error) {
 	date = timeToYMD(date)
 	event := &entity.Event{
 		UserID: userID,
@@ -168,9 +169,9 @@ func (r *Event) CreateEvent(tx IQuery, ctx context.Context, userID, typeID int32
 	}
 	return event, nil
 }
-func (r *Event) DeleteEvent(tx IQuery, ctx context.Context, userID, id int32) error {
+func (r *Event) DeleteEvent(tx godb.Queryer, ctx context.Context, userID, id int32) error {
 	q := gosql.NewUpdate().Table("events")
-	q.Set().Add("deleted_at = datetime('now')")
+	q.Set().Add("deleted_at = now()")
 	q.Where().AddExpression("id = ?", id)
 	q.Where().AddExpression("user_id = ?", userID)
 	q.Where().AddExpression("deleted_at IS NULL")
@@ -187,7 +188,7 @@ func (r *Event) DeleteEvent(tx IQuery, ctx context.Context, userID, id int32) er
 	}
 	return nil
 }
-func (r *Event) ListEvent(tx IQuery, ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error) {
+func (r *Event) ListEvent(tx godb.Queryer, ctx context.Context, filter *dto.ListEventFilter) ([]*entity.Event, int32, error) {
 	var res []*entity.Event
 
 	q := gosql.NewSelect().From("events e")
@@ -248,7 +249,7 @@ func (r *Event) ListEvent(tx IQuery, ctx context.Context, filter *dto.ListEventF
 	return res, int32(len(res)), nil
 }
 
-func (r *Event) FriendsFeed(tx IQuery, ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error) {
+func (r *Event) FriendsFeed(tx godb.Queryer, ctx context.Context, userID int32) ([]*dto.FeedResponseDTO, int32, error) {
 	var res []*dto.FeedResponseDTO
 
 	q := gosql.NewSelect().From("friends f")
