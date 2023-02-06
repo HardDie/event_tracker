@@ -75,6 +75,7 @@ func (s *Friend) InviteFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	err = s.service.InviteFriend(ctx, req)
 	if err != nil {
 		errs.HttpError(w, err)
@@ -148,6 +149,7 @@ func (s *Friend) InviteAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	err = s.service.AcceptFriendship(ctx, userID, id)
 	if err != nil {
 		errs.HttpError(w, err)

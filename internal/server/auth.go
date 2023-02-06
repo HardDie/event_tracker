@@ -91,6 +91,7 @@ func (s *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	err = utils.Response(w, session)
 	if err != nil {
 		logger.Error.Println("error write to socket:", err.Error())

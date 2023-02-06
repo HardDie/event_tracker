@@ -86,6 +86,7 @@ func (s *Event) CreateEventType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	err = utils.Response(w, eventType)
 	if err != nil {
 		logger.Error.Println("error write to socket:", err.Error())
@@ -237,6 +238,7 @@ func (s *Event) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	err = utils.Response(w, event)
 	if err != nil {
 		logger.Error.Println("error write to socket:", err.Error())
