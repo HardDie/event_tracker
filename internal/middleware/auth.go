@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/HardDie/event_tracker/internal/errs"
 	"github.com/HardDie/event_tracker/internal/service"
 	"github.com/HardDie/event_tracker/internal/utils"
 )
@@ -24,18 +25,18 @@ func (m *AuthMiddleware) RequestMiddleware(next http.Handler) http.Handler {
 
 		// If we got no session
 		if bearer == "" {
-			http.Error(w, "Invalid session", http.StatusBadRequest)
+			http.Error(w, "Invalid session token", http.StatusBadRequest)
 			return
 		}
 
 		// Validate if session is active
 		ctx := r.Context()
 		session, err := m.authService.ValidateCookie(ctx, bearer)
-		if err != nil || session == nil {
-			if errors.Is(err, service.ErrorSessionHasExpired) {
-				http.Error(w, "Session has expired", http.StatusUnauthorized)
+		if err != nil {
+			if errors.Is(err, errs.SessionInvalid) {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 			} else {
-				http.Error(w, "Invalid session", http.StatusUnauthorized)
+				http.Error(w, "Internal error", http.StatusInternalServerError)
 			}
 			return
 		}

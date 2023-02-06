@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/HardDie/godb/v2"
 	"github.com/dimonrus/gosql"
@@ -55,6 +57,9 @@ func (r *Session) GetByUserID(tx godb.Queryer, ctx context.Context, sessionHash 
 
 	err := row.Scan(&session.ID, &session.UserID, &session.CreatedAt, &session.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return session, nil

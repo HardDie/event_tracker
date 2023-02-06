@@ -10,7 +10,6 @@ import (
 
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
-	"github.com/HardDie/event_tracker/internal/logger"
 )
 
 type IFriend interface {
@@ -62,8 +61,7 @@ func (r *Friend) ListPendingInvitations(tx godb.Queryer, ctx context.Context, us
 	q.AddOrder("fi.id")
 	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -71,16 +69,14 @@ func (r *Friend) ListPendingInvitations(tx godb.Queryer, ctx context.Context, us
 		friendRequest := &dto.InviteListResponseDTO{}
 		err = rows.Scan(&friendRequest.ID, &friendRequest.User.ID, &friendRequest.User.DisplayedName, &friendRequest.User.ProfileImage, &friendRequest.CreatedAt)
 		if err != nil {
-			logger.Error.Println(err.Error())
-			return nil, 0, ErrorInternal
+			return nil, 0, err
 		}
 		res = append(res, friendRequest)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 
 	return res, int32(len(res)), nil
@@ -96,8 +92,7 @@ func (r *Friend) DeleteInvite(tx godb.Queryer, ctx context.Context, userID, invi
 
 	err := row.Scan(&inviteID)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return ErrorInternal
+		return err
 	}
 	return nil
 }
@@ -178,8 +173,7 @@ func (r *Friend) CreateFriendshipLink(tx godb.Queryer, ctx context.Context, user
 	q.Returning().Add("id", "user_id", "with_user_id", "created_at", "updated_at")
 	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, ErrorInternal
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -187,10 +181,14 @@ func (r *Friend) CreateFriendshipLink(tx godb.Queryer, ctx context.Context, user
 		friend := &entity.Friend{}
 		err = rows.Scan(&friend.ID, &friend.UserID, &friend.WithUserID, &friend.CreatedAt, &friend.UpdatedAt)
 		if err != nil {
-			logger.Error.Println(err.Error())
-			return nil, ErrorInternal
+			return nil, err
 		}
 		res = append(res, friend)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
 	}
 
 	return res, nil
@@ -207,8 +205,7 @@ func (r *Friend) ListOfFriends(tx godb.Queryer, ctx context.Context, userID int3
 	q.AddOrder("f.id")
 	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -216,16 +213,14 @@ func (r *Friend) ListOfFriends(tx godb.Queryer, ctx context.Context, userID int3
 		user := &entity.User{}
 		err = rows.Scan(&user.ID, &user.DisplayedName, &user.ProfileImage)
 		if err != nil {
-			logger.Error.Println(err.Error())
-			return nil, 0, ErrorInternal
+			return nil, 0, err
 		}
 		res = append(res, user)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 
 	return res, int32(len(res)), nil

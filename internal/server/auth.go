@@ -8,6 +8,7 @@ import (
 	"github.com/HardDie/event_tracker/internal/config"
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
+	"github.com/HardDie/event_tracker/internal/errs"
 	"github.com/HardDie/event_tracker/internal/logger"
 	"github.com/HardDie/event_tracker/internal/service"
 	"github.com/HardDie/event_tracker/internal/utils"
@@ -68,7 +69,6 @@ func (s *Auth) Register(w http.ResponseWriter, r *http.Request) {
 	req := &dto.RegisterDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -81,21 +81,19 @@ func (s *Auth) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.service.Register(ctx, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	session, err := s.service.GenerateCookie(ctx, user.ID)
 	if err != nil {
-		logger.Error.Printf(err.Error())
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, session)
 	if err != nil {
-		logger.Error.Printf(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -127,7 +125,6 @@ func (s *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	req := &dto.LoginDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -140,21 +137,19 @@ func (s *Auth) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.service.Login(ctx, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	session, err := s.service.GenerateCookie(ctx, user.ID)
 	if err != nil {
-		logger.Error.Printf(err.Error())
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, session)
 	if err != nil {
-		logger.Error.Printf(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -186,14 +181,13 @@ func (s *Auth) User(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.service.GetUserInfo(ctx, userID)
 	if err != nil {
-		logger.Error.Printf(err.Error())
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, user)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -217,8 +211,7 @@ func (s *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	err := s.service.Logout(ctx, session.ID)
 	if err != nil {
-		logger.Error.Printf(err.Error())
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 }

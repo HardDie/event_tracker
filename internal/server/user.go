@@ -1,13 +1,13 @@
 package server
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
+	"github.com/HardDie/event_tracker/internal/errs"
 	"github.com/HardDie/event_tracker/internal/logger"
 	"github.com/HardDie/event_tracker/internal/service"
 	"github.com/HardDie/event_tracker/internal/utils"
@@ -61,7 +61,6 @@ func (s *User) Get(w http.ResponseWriter, r *http.Request) {
 
 	id, err := utils.GetInt32FromPath(r, "id")
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Bad id in path", http.StatusBadRequest)
 		return
 	}
@@ -77,14 +76,13 @@ func (s *User) Get(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.service.Get(ctx, id, userID)
 	if err != nil {
-		logger.Error.Println("Can't get post:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, user)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -113,7 +111,6 @@ func (s *User) Password(w http.ResponseWriter, r *http.Request) {
 	req := &dto.UpdatePasswordDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -126,8 +123,7 @@ func (s *User) Password(w http.ResponseWriter, r *http.Request) {
 
 	err = s.service.Password(ctx, req, userID)
 	if err != nil {
-		logger.Error.Println("Can't update password:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 }
@@ -161,7 +157,6 @@ func (s *User) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	req := &dto.UpdateProfileDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -175,14 +170,13 @@ func (s *User) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.service.UpdateProfile(ctx, req)
 	if err != nil {
-		logger.Error.Println("Can't update user profile:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, user)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -215,7 +209,6 @@ func (s *User) UpdateImage(w http.ResponseWriter, r *http.Request) {
 	req := &dto.UpdateProfileImageDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -227,17 +220,14 @@ func (s *User) UpdateImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Length:", len(*req.ProfileImage))
-
 	user, err := s.service.UpdateImage(ctx, req)
 	if err != nil {
-		logger.Error.Println("Can't update user image:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, user)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }

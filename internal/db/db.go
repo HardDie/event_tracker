@@ -72,7 +72,7 @@ func (db *DB) EndTx(tx *godb.SqlTx, err error) error {
 	if err != nil {
 		err = tx.Rollback()
 		if err != nil {
-			logger.Error.Println("error rollback tx:", err.Error())
+			logger.Error.Printf("error rollback tx: %v", err.Error())
 			return err
 		}
 		return nil
@@ -80,7 +80,7 @@ func (db *DB) EndTx(tx *godb.SqlTx, err error) error {
 
 	err = tx.Commit()
 	if err != nil {
-		logger.Error.Println("error commit tx:", err.Error())
+		logger.Error.Printf("error commit tx: %v", err.Error())
 		return err
 	}
 	return nil

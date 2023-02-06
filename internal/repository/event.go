@@ -2,8 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/HardDie/godb/v2"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
-	"github.com/HardDie/event_tracker/internal/logger"
 )
 
 type IEvent interface {
@@ -47,11 +44,7 @@ func (r *Event) CreateType(tx godb.Queryer, ctx context.Context, userID int32, n
 
 	err := row.Scan(&eventType.ID, &eventType.CreatedAt, &eventType.UpdatedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrorEventTypeNotExist
-		}
-		logger.Error.Println(err.Error())
-		return nil, ErrorInternal
+		return nil, err
 	}
 	return eventType, nil
 }
@@ -66,11 +59,7 @@ func (r *Event) DeleteType(tx godb.Queryer, ctx context.Context, userID, id int3
 
 	err := row.Scan(&id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrorEventTypeNotExist
-		}
-		logger.Error.Println(err.Error())
-		return ErrorInternal
+		return err
 	}
 	return nil
 }
@@ -87,8 +76,7 @@ func (r *Event) ListType(tx godb.Queryer, ctx context.Context, userID int32, onl
 	q.AddOrder("event_type")
 	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -96,22 +84,14 @@ func (r *Event) ListType(tx godb.Queryer, ctx context.Context, userID int32, onl
 		eventType := &entity.EventType{}
 		err = rows.Scan(&eventType.ID, &eventType.UserID, &eventType.EventType, &eventType.IsVisible, &eventType.CreatedAt, &eventType.UpdatedAt)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, 0, ErrorEventTypeNotExist
-			}
-			logger.Error.Println(err.Error())
-			return nil, 0, ErrorInternal
+			return nil, 0, err
 		}
 		res = append(res, eventType)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, 0, ErrorEventTypeNotExist
-		}
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 
 	return res, int32(len(res)), nil
@@ -136,11 +116,7 @@ func (r *Event) EditType(tx godb.Queryer, ctx context.Context, userID, id int32,
 
 	err := row.Scan(&eventType.CreatedAt, &eventType.UpdatedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrorEventTypeNotExist
-		}
-		logger.Error.Println(err.Error())
-		return nil, ErrorInternal
+		return nil, err
 	}
 	return eventType, nil
 }
@@ -161,11 +137,7 @@ func (r *Event) CreateEvent(tx godb.Queryer, ctx context.Context, userID, typeID
 
 	err := row.Scan(&event.ID, &event.CreatedAt, &event.UpdatedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrorEventNotExist
-		}
-		logger.Error.Println(err.Error())
-		return nil, ErrorInternal
+		return nil, err
 	}
 	return event, nil
 }
@@ -180,11 +152,7 @@ func (r *Event) DeleteEvent(tx godb.Queryer, ctx context.Context, userID, id int
 
 	err := row.Scan(&id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrorEventNotExist
-		}
-		logger.Error.Println(err.Error())
-		return ErrorInternal
+		return err
 	}
 	return nil
 }
@@ -219,8 +187,7 @@ func (r *Event) ListEvent(tx godb.Queryer, ctx context.Context, filter *dto.List
 
 	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -228,22 +195,14 @@ func (r *Event) ListEvent(tx godb.Queryer, ctx context.Context, filter *dto.List
 		event := &entity.Event{}
 		err = rows.Scan(&event.ID, &event.UserID, &event.TypeID, &event.Date, &event.CreatedAt, &event.UpdatedAt)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, 0, ErrorEventNotExist
-			}
-			logger.Error.Println(err.Error())
-			return nil, 0, ErrorInternal
+			return nil, 0, err
 		}
 		res = append(res, event)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, 0, ErrorEventNotExist
-		}
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 
 	return res, int32(len(res)), nil
@@ -267,8 +226,7 @@ func (r *Event) FriendsFeed(tx godb.Queryer, ctx context.Context, userID int32) 
 
 	rows, err := tx.QueryContext(ctx, q.String(), q.GetArguments()...)
 	if err != nil {
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -276,19 +234,14 @@ func (r *Event) FriendsFeed(tx godb.Queryer, ctx context.Context, userID int32) 
 		event := &dto.FeedResponseDTO{}
 		err = rows.Scan(&event.EventID, &event.UserID, &event.EventTypeID, &event.EventType, &event.Date, &event.CreatedAt)
 		if err != nil {
-			logger.Error.Println(err.Error())
-			return nil, 0, ErrorInternal
+			return nil, 0, err
 		}
 		res = append(res, event)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, 0, nil
-		}
-		logger.Error.Println(err.Error())
-		return nil, 0, ErrorInternal
+		return nil, 0, err
 	}
 
 	return res, int32(len(res)), nil

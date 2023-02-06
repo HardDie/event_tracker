@@ -7,6 +7,7 @@ import (
 
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
+	"github.com/HardDie/event_tracker/internal/errs"
 	"github.com/HardDie/event_tracker/internal/logger"
 	"github.com/HardDie/event_tracker/internal/service"
 	"github.com/HardDie/event_tracker/internal/utils"
@@ -69,7 +70,6 @@ func (s *Event) CreateEventType(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CreateEventTypeDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -82,14 +82,13 @@ func (s *Event) CreateEventType(w http.ResponseWriter, r *http.Request) {
 
 	eventType, err := s.service.CreateType(ctx, userID, req)
 	if err != nil {
-		logger.Error.Println("Can't create event type:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, eventType)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -118,8 +117,7 @@ func (s *Event) ListEventType(w http.ResponseWriter, r *http.Request) {
 
 	eventTypes, total, err := s.service.ListType(ctx, userID)
 	if err != nil {
-		logger.Error.Println("Can't get event type list:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 	if eventTypes == nil {
@@ -131,7 +129,7 @@ func (s *Event) ListEventType(w http.ResponseWriter, r *http.Request) {
 	}
 	err = utils.ResponseWithMeta(w, eventTypes, meta)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -166,14 +164,12 @@ func (s *Event) EditEventType(w http.ResponseWriter, r *http.Request) {
 	req := &dto.EditEventTypeDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
 
 	req.ID, err = utils.GetInt32FromPath(r, "id")
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Bad id in path", http.StatusBadRequest)
 		return
 	}
@@ -186,14 +182,13 @@ func (s *Event) EditEventType(w http.ResponseWriter, r *http.Request) {
 
 	eventType, err := s.service.EditType(ctx, userID, req)
 	if err != nil {
-		logger.Error.Println("Can't edit event type:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, eventType)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -226,7 +221,6 @@ func (s *Event) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	req := &dto.CreateEventDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -239,14 +233,13 @@ func (s *Event) CreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	event, err := s.service.CreateEvent(ctx, userID, req)
 	if err != nil {
-		logger.Error.Println("Can't create event:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 
 	err = utils.Response(w, event)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -280,7 +273,6 @@ func (s *Event) ListEvent(w http.ResponseWriter, r *http.Request) {
 	req := &dto.ListEventDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -293,8 +285,7 @@ func (s *Event) ListEvent(w http.ResponseWriter, r *http.Request) {
 
 	events, total, err := s.service.ListEvent(ctx, userID, req)
 	if err != nil {
-		logger.Error.Println("Can't get event list:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 	if events == nil {
@@ -306,7 +297,7 @@ func (s *Event) ListEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	err = utils.ResponseWithMeta(w, events, meta)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -335,8 +326,7 @@ func (s *Event) FeedEvents(w http.ResponseWriter, r *http.Request) {
 
 	events, total, err := s.service.FriendsFeed(ctx, userID)
 	if err != nil {
-		logger.Error.Println("Can't get feed:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 	if events == nil {
@@ -348,6 +338,6 @@ func (s *Event) FeedEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	err = utils.ResponseWithMeta(w, events, meta)
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }

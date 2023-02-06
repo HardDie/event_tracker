@@ -7,6 +7,7 @@ import (
 
 	"github.com/HardDie/event_tracker/internal/dto"
 	"github.com/HardDie/event_tracker/internal/entity"
+	"github.com/HardDie/event_tracker/internal/errs"
 	"github.com/HardDie/event_tracker/internal/logger"
 	"github.com/HardDie/event_tracker/internal/service"
 	"github.com/HardDie/event_tracker/internal/utils"
@@ -63,7 +64,6 @@ func (s *Friend) InviteFriend(w http.ResponseWriter, r *http.Request) {
 	req := &dto.InviteFriendDTO{}
 	err := utils.ParseJsonFromHTTPRequest(r.Body, req)
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Can't parse request", http.StatusBadRequest)
 		return
 	}
@@ -77,8 +77,7 @@ func (s *Friend) InviteFriend(w http.ResponseWriter, r *http.Request) {
 
 	err = s.service.InviteFriend(ctx, req)
 	if err != nil {
-		logger.Error.Println("Can't creation invitation:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 }
@@ -108,8 +107,7 @@ func (s *Friend) InviteList(w http.ResponseWriter, r *http.Request) {
 
 	invites, total, err := s.service.InviteListPending(ctx, userID)
 	if err != nil {
-		logger.Error.Println("Can't get list of invitations:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 	if invites == nil {
@@ -120,7 +118,7 @@ func (s *Friend) InviteList(w http.ResponseWriter, r *http.Request) {
 		Total: total,
 	})
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
 
@@ -146,15 +144,13 @@ func (s *Friend) InviteAccept(w http.ResponseWriter, r *http.Request) {
 
 	id, err := utils.GetInt32FromPath(r, "id")
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Bad id in path", http.StatusBadRequest)
 		return
 	}
 
 	err = s.service.AcceptFriendship(ctx, userID, id)
 	if err != nil {
-		logger.Error.Println("Can't accept friendship:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 }
@@ -181,15 +177,13 @@ func (s *Friend) InviteReject(w http.ResponseWriter, r *http.Request) {
 
 	id, err := utils.GetInt32FromPath(r, "id")
 	if err != nil {
-		logger.Error.Printf(err.Error())
 		http.Error(w, "Bad id in path", http.StatusBadRequest)
 		return
 	}
 
 	err = s.service.RejectFriendship(ctx, userID, id)
 	if err != nil {
-		logger.Error.Println("Can't reject friendship:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 }
@@ -219,8 +213,7 @@ func (s *Friend) FriendList(w http.ResponseWriter, r *http.Request) {
 
 	friends, total, err := s.service.ListOfFriends(ctx, userID)
 	if err != nil {
-		logger.Error.Println("Can't get list of friends:", err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		errs.HttpError(w, err)
 		return
 	}
 	if friends == nil {
@@ -231,6 +224,6 @@ func (s *Friend) FriendList(w http.ResponseWriter, r *http.Request) {
 		Total: total,
 	})
 	if err != nil {
-		logger.Error.Println(err.Error())
+		logger.Error.Println("error write to socket:", err.Error())
 	}
 }
